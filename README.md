@@ -4,9 +4,18 @@ App sencilla para organizar el intercambio de regalos navideños en familia.
 
 ## ¿Qué hace?
 
-- **Agregar participantes** - Añadir nombres de familiares
-- **Hacer el sorteo** - Asignar aleatoriamente quién le regala a quién
-- **Ver asignación** - Cada persona puede ver a quién le toca regalar (sin revelar a los demás)
+- **Agregar participantes** - Añadir nombres de familiares desde `/admin`
+- **Generar invitaciones** - Cada participante recibe un link único y privado
+- **Tómbola interactiva** - Cada persona saca su propio papelito de la tómbola
+- **Ver asignación** - Cada persona solo puede ver a quién le toca regalar
+
+## Cómo funciona
+
+1. El organizador entra a `/admin` y agrega los participantes
+2. Hace clic en "📋 Copiar invitación" para cada persona
+3. Envía el link único a cada familiar (por WhatsApp, email, etc.)
+4. Cada familiar entra con su link y saca su papelito de la tómbola
+5. ¡Nadie sabe a quién le toca regalarle cada quién! 🎁
 
 ## Tecnologías
 
@@ -22,7 +31,7 @@ App sencilla para organizar el intercambio de regalos navideños en familia.
 2. Instalar dependencias: `npm install`
 3. Crear archivo `.env` con tu `DATABASE_URL`
 4. Generar cliente Prisma: `npx prisma generate`
-5. Ejecutar migraciones: `npx prisma migrate dev`
+5. Sincronizar base de datos: `npx prisma db push`
 6. Iniciar: `npm run dev`
 
 ## Variables de entorno
@@ -30,6 +39,14 @@ App sencilla para organizar el intercambio de regalos navideños en familia.
 ```env
 DATABASE_URL="prisma+postgres://..."
 ```
+
+## Rutas
+
+| Ruta | Descripción |
+|------|-------------|
+| `/` | Página principal (redirige a admin si no hay token) |
+| `/admin` | Panel de administración (agregar participantes, copiar invitaciones) |
+| `/participar/[token]` | Página única de cada participante para sacar su papelito |
 
 ---
 

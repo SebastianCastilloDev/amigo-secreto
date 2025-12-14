@@ -6,6 +6,7 @@ import Link from "next/link";
 interface Participante {
   id: number;
   nombre: string;
+  token?: string;
 }
 
 export default function Admin() {
@@ -13,12 +14,29 @@ export default function Admin() {
   const [participantes, setParticipantes] = useState<Participante[]>([]);
   const [nuevoNombre, setNuevoNombre] = useState("");
   const [guardando, setGuardando] = useState(false);
-  const [sorteando, setSorteando] = useState(false);
   const [mensajeSorteo, setMensajeSorteo] = useState("");
+  const [sorteoRealizado, setSorteoRealizado] = useState(false);
+  const [errorAgregar, setErrorAgregar] = useState("");
+  const [copiado, setCopiado] = useState<number | null>(null);
 
   useEffect(() => {
-    cargarParticipantes();
+    cargarDatos();
   }, []);
+
+  async function cargarDatos() {
+    await Promise.all([cargarParticipantes(), verificarEstadoSorteo()]);
+    setCargando(false);
+  }
+
+  async function verificarEstadoSorteo() {
+    try {
+      const respuesta = await fetch("/api/sorteo/estado");
+      const datos = await respuesta.json();
+      setSorteoRealizado(datos.sorteoRealizado);
+    } catch (error) {
+      console.error("Error al verificar estado:", error);
+    }
+  }
 
   async function cargarParticipantes() {
     try {
@@ -37,6 +55,8 @@ export default function Admin() {
     if (!nuevoNombre.trim() || guardando) return;
 
     setGuardando(true);
+    setErrorAgregar("");
+    
     try {
       const respuesta = await fetch("/api/participantes", {
         method: "POST",
@@ -44,12 +64,17 @@ export default function Admin() {
         body: JSON.stringify({ nombre: nuevoNombre }),
       });
 
+      const datos = await respuesta.json();
+
       if (respuesta.ok) {
         setNuevoNombre("");
         cargarParticipantes();
+      } else {
+        setErrorAgregar(datos.error || "Error al agregar");
       }
     } catch (error) {
       console.error("Error al agregar:", error);
+      setErrorAgregar("Error de conexión");
     } finally {
       setGuardando(false);
     }
@@ -71,32 +96,62 @@ export default function Admin() {
     }
   }
 
-  async function hacerSorteo() {
-    if (participantes.length < 2) {
-      setMensajeSorteo("❌ Se necesitan al menos 2 participantes");
+  async function reiniciarSorteo() {
+    if (!confirm("¿Estás seguro de reiniciar la tómbola? Se eliminarán todas las asignaciones y todos podrán sacar papelito de nuevo.")) {
       return;
     }
 
-    setSorteando(true);
-    setMensajeSorteo("");
-
     try {
       const respuesta = await fetch("/api/sorteo", {
-        method: "POST",
+        method: "DELETE",
       });
 
-      const datos = await respuesta.json();
-
       if (respuesta.ok) {
-        setMensajeSorteo("✅ ¡Sorteo realizado con éxito!");
-      } else {
-        setMensajeSorteo(`❌ ${datos.error}`);
+        setMensajeSorteo("🔄 Tómbola reiniciada. Todos pueden volver a participar.");
+        setSorteoRealizado(false);
       }
     } catch (error) {
-      setMensajeSorteo("❌ Error al realizar el sorteo");
-    } finally {
-      setSorteando(false);
+      setMensajeSorteo("❌ Error al reiniciar la tómbola");
     }
+  }
+
+  async function generarInvitacion(participante: Participante) {
+    // Si ya tiene token, solo copiar
+    if (participante.token) {
+      copiarAlPortapapeles(participante);
+      return;
+    }
+
+    // Generar token
+    try {
+      const respuesta = await fetch("/api/participantes/invitacion", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ participanteId: participante.id }),
+      });
+
+      if (respuesta.ok) {
+        const datos = await respuesta.json();
+        // Actualizar el participante con el nuevo token
+        setParticipantes(prev => 
+          prev.map(p => 
+            p.id === participante.id 
+              ? { ...p, token: datos.token } 
+              : p
+          )
+        );
+        copiarAlPortapapeles({ ...participante, token: datos.token });
+      }
+    } catch (error) {
+      console.error("Error al generar invitación:", error);
+    }
+  }
+
+  function copiarAlPortapapeles(participante: Participante) {
+    const url = `${window.location.origin}/participar/${participante.token}`;
+    navigator.clipboard.writeText(url);
+    setCopiado(participante.id);
+    setTimeout(() => setCopiado(null), 2000);
   }
 
   if (cargando) {
@@ -130,6 +185,7 @@ export default function Admin() {
             {guardando ? "Agregando..." : "Agregar"}
           </button>
         </form>
+        {errorAgregar && <p style={{ color: "red", marginTop: "5px" }}>{errorAgregar}</p>}
       </section>
 
       {/* Lista de participantes */}
@@ -140,8 +196,22 @@ export default function Admin() {
         ) : (
           <ul>
             {participantes.map((p) => (
-              <li key={p.id}>
+              <li key={p.id} style={{ marginBottom: "8px" }}>
                 {p.nombre}
+                <button
+                  onClick={() => generarInvitacion(p)}
+                  style={{ 
+                    marginLeft: "10px",
+                    backgroundColor: copiado === p.id ? "#4CAF50" : "#2196F3",
+                    color: "white",
+                    border: "none",
+                    padding: "4px 8px",
+                    borderRadius: "4px",
+                    cursor: "pointer"
+                  }}
+                >
+                  {copiado === p.id ? "✅ Copiado" : "📋 Copiar invitación"}
+                </button>
                 <button
                   onClick={() => eliminarParticipante(p.id)}
                   style={{ marginLeft: "10px" }}
@@ -154,18 +224,42 @@ export default function Admin() {
         )}
       </section>
 
-      {/* Botón de sorteo */}
+      {/* Estado de la tómbola */}
       <section style={{ marginTop: "30px" }}>
-        <h2>🎲 Realizar Sorteo</h2>
-        <p>Una vez que todos estén agregados, haz el sorteo.</p>
-        <button
-          onClick={hacerSorteo}
-          disabled={sorteando || participantes.length < 2}
-          style={{ padding: "10px 20px", fontSize: "16px" }}
-        >
-          {sorteando ? "Sorteando..." : "🎲 ¡Hacer el Sorteo!"}
-        </button>
-        {mensajeSorteo && <p style={{ marginTop: "10px" }}>{mensajeSorteo}</p>}
+        <h2>🎰 Estado de la Tómbola</h2>
+        
+        {sorteoRealizado ? (
+          <div>
+            <p style={{ 
+              backgroundColor: "#e8f5e9", 
+              padding: "10px", 
+              borderRadius: "5px",
+              marginBottom: "15px" 
+            }}>
+              ✅ Algunos participantes ya sacaron su papelito de la tómbola.
+            </p>
+            
+            <button
+              onClick={reiniciarSorteo}
+              style={{ 
+                padding: "10px 20px", 
+                fontSize: "16px",
+                backgroundColor: "#ffebee",
+                border: "1px solid #f44336",
+                cursor: "pointer"
+              }}
+            >
+              🗑️ Reiniciar tómbola (borrar todas las asignaciones)
+            </button>
+            
+            {mensajeSorteo && <p style={{ marginTop: "10px" }}>{mensajeSorteo}</p>}
+          </div>
+        ) : (
+          <p style={{ color: "#666" }}>
+            Nadie ha sacado papelito aún. Cuando los participantes entren a la página principal, 
+            cada uno sacará su amigo secreto de la tómbola.
+          </p>
+        )}
       </section>
     </main>
   );

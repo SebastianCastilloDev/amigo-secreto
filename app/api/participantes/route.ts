@@ -29,6 +29,18 @@ export async function POST(request: Request) {
             );
         }
 
+        // Validar duplicados
+        const existente = await prisma.participante.findFirst({
+            where: { nombre: { equals: nombre.trim(), mode: "insensitive" } },
+        });
+
+        if (existente) {
+            return NextResponse.json(
+                { error: "Ya existe un participante con ese nombre" },
+                { status: 400 }
+            );
+        }
+
         const participante = await prisma.participante.create({
             data: { nombre: nombre.trim() },
         });
@@ -55,6 +67,17 @@ export async function DELETE(request: Request) {
             );
         }
 
+        // Primero eliminar asignaciones relacionadas
+        await prisma.asignacion.deleteMany({
+            where: {
+                OR: [
+                    { quienRegalaId: id },
+                    { quienRecibeId: id },
+                ],
+            },
+        });
+
+        // Luego eliminar el participante
         await prisma.participante.delete({
             where: { id },
         });
