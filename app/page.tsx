@@ -16,6 +16,8 @@ export default function Inicio() {
   const [buscando, setBuscando] = useState(false);
   const [error, setError] = useState("");
 
+  const [yaParticipo, setYaParticipo] = useState(false);
+
   useEffect(() => {
     cargarParticipantes();
   }, []);
@@ -32,7 +34,7 @@ export default function Inicio() {
     }
   }
 
-  async function verMiAmigoSecreto() {
+  async function hacerTombola() {
     if (!seleccionado) return;
 
     setBuscando(true);
@@ -40,13 +42,20 @@ export default function Inicio() {
     setAmigoSecreto(null);
 
     try {
-      const respuesta = await fetch(`/api/sorteo?participanteId=${seleccionado.id}`);
+      // POST para hacer el sorteo individual
+      const respuesta = await fetch("/api/sorteo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ participanteId: seleccionado.id }),
+      });
+
       const datos = await respuesta.json();
 
       if (respuesta.ok) {
         setAmigoSecreto(datos.recibeNombre);
+        setYaParticipo(datos.yaAsignado);
       } else {
-        setError(datos.error || "Error al obtener tu amigo secreto");
+        setError(datos.error || "Error al realizar el sorteo");
       }
     } catch (error) {
       setError("Error de conexión");
@@ -77,9 +86,15 @@ export default function Inicio() {
       <main>
         <h1>Amigo Secreto 🎁</h1>
         <div style={{ marginTop: "30px", textAlign: "center" }}>
-          <p style={{ fontSize: "18px" }}>
-            <strong>{seleccionado?.nombre}</strong>, tu amigo secreto es:
-          </p>
+          {yaParticipo ? (
+            <p style={{ fontSize: "16px", color: "#666" }}>
+              Ya habías participado antes. Tu amigo secreto sigue siendo:
+            </p>
+          ) : (
+            <p style={{ fontSize: "18px" }}>
+              🎉 <strong>{seleccionado?.nombre}</strong>, sacaste de la tómbola a:
+            </p>
+          )}
           <p style={{ fontSize: "32px", marginTop: "20px" }}>
             🎁 <strong>{amigoSecreto}</strong> 🎁
           </p>
@@ -134,7 +149,7 @@ export default function Inicio() {
 
           {seleccionado && (
             <button
-              onClick={verMiAmigoSecreto}
+              onClick={hacerTombola}
               disabled={buscando}
               style={{
                 marginTop: "20px",
@@ -147,7 +162,7 @@ export default function Inicio() {
                 cursor: "pointer",
               }}
             >
-              {buscando ? "Buscando..." : "🎲 ¡Ver mi amigo secreto!"}
+              {buscando ? "Sacando papelito..." : "🎰 ¡Sacar de la tómbola!"}
             </button>
           )}
 

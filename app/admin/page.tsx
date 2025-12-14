@@ -13,7 +13,6 @@ export default function Admin() {
   const [participantes, setParticipantes] = useState<Participante[]>([]);
   const [nuevoNombre, setNuevoNombre] = useState("");
   const [guardando, setGuardando] = useState(false);
-  const [sorteando, setSorteando] = useState(false);
   const [mensajeSorteo, setMensajeSorteo] = useState("");
   const [sorteoRealizado, setSorteoRealizado] = useState(false);
   const [errorAgregar, setErrorAgregar] = useState("");
@@ -95,37 +94,8 @@ export default function Admin() {
     }
   }
 
-  async function hacerSorteo() {
-    if (participantes.length < 2) {
-      setMensajeSorteo("❌ Se necesitan al menos 2 participantes");
-      return;
-    }
-
-    setSorteando(true);
-    setMensajeSorteo("");
-
-    try {
-      const respuesta = await fetch("/api/sorteo", {
-        method: "POST",
-      });
-
-      const datos = await respuesta.json();
-
-      if (respuesta.ok) {
-        setMensajeSorteo("✅ ¡Sorteo realizado con éxito!");
-        setSorteoRealizado(true);
-      } else {
-        setMensajeSorteo(`❌ ${datos.error}`);
-      }
-    } catch (error) {
-      setMensajeSorteo("❌ Error al realizar el sorteo");
-    } finally {
-      setSorteando(false);
-    }
-  }
-
   async function reiniciarSorteo() {
-    if (!confirm("¿Estás seguro de reiniciar el sorteo? Se eliminarán todas las asignaciones.")) {
+    if (!confirm("¿Estás seguro de reiniciar la tómbola? Se eliminarán todas las asignaciones y todos podrán sacar papelito de nuevo.")) {
       return;
     }
 
@@ -135,11 +105,11 @@ export default function Admin() {
       });
 
       if (respuesta.ok) {
-        setMensajeSorteo("🔄 Sorteo reiniciado. Puedes hacer uno nuevo.");
+        setMensajeSorteo("🔄 Tómbola reiniciada. Todos pueden volver a participar.");
         setSorteoRealizado(false);
       }
     } catch (error) {
-      setMensajeSorteo("❌ Error al reiniciar el sorteo");
+      setMensajeSorteo("❌ Error al reiniciar la tómbola");
     }
   }
 
@@ -199,18 +169,42 @@ export default function Admin() {
         )}
       </section>
 
-      {/* Botón de sorteo */}
+      {/* Estado de la tómbola */}
       <section style={{ marginTop: "30px" }}>
-        <h2>🎲 Realizar Sorteo</h2>
-        <p>Una vez que todos estén agregados, haz el sorteo.</p>
-        <button
-          onClick={hacerSorteo}
-          disabled={sorteando || participantes.length < 2}
-          style={{ padding: "10px 20px", fontSize: "16px" }}
-        >
-          {sorteando ? "Sorteando..." : "🎲 ¡Hacer el Sorteo!"}
-        </button>
-        {mensajeSorteo && <p style={{ marginTop: "10px" }}>{mensajeSorteo}</p>}
+        <h2>🎰 Estado de la Tómbola</h2>
+        
+        {sorteoRealizado ? (
+          <div>
+            <p style={{ 
+              backgroundColor: "#e8f5e9", 
+              padding: "10px", 
+              borderRadius: "5px",
+              marginBottom: "15px" 
+            }}>
+              ✅ Algunos participantes ya sacaron su papelito de la tómbola.
+            </p>
+            
+            <button
+              onClick={reiniciarSorteo}
+              style={{ 
+                padding: "10px 20px", 
+                fontSize: "16px",
+                backgroundColor: "#ffebee",
+                border: "1px solid #f44336",
+                cursor: "pointer"
+              }}
+            >
+              🗑️ Reiniciar tómbola (borrar todas las asignaciones)
+            </button>
+            
+            {mensajeSorteo && <p style={{ marginTop: "10px" }}>{mensajeSorteo}</p>}
+          </div>
+        ) : (
+          <p style={{ color: "#666" }}>
+            Nadie ha sacado papelito aún. Cuando los participantes entren a la página principal, 
+            cada uno sacará su amigo secreto de la tómbola.
+          </p>
+        )}
       </section>
     </main>
   );
