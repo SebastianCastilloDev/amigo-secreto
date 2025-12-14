@@ -1,17 +1,31 @@
 import { prisma } from "../../lib/prisma";
 import { NextResponse } from "next/server";
 
-// Realizar sorteo individual (tómbola)
+// Realizar sorteo individual (tómbola) - REQUIERE TOKEN
 export async function POST(request: Request) {
     try {
-        const { participanteId } = await request.json();
+        const { token } = await request.json();
 
-        if (!participanteId) {
+        if (!token) {
             return NextResponse.json(
-                { error: "Se requiere el id del participante" },
+                { error: "Token requerido" },
                 { status: 400 }
             );
         }
+
+        // Buscar participante por token (no por ID)
+        const participante = await prisma.participante.findUnique({
+            where: { token },
+        });
+
+        if (!participante) {
+            return NextResponse.json(
+                { error: "Invitación no válida" },
+                { status: 403 }
+            );
+        }
+
+        const participanteId = participante.id;
 
         // Verificar si ya tiene asignación
         const asignacionExistente = await prisma.asignacion.findUnique({

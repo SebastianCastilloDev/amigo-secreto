@@ -54,14 +54,14 @@ export default function Participar() {
   }
 
   async function sacarDeTombola() {
-    if (!participanteId) return;
+    if (!token) return;
 
     setSacando(true);
     try {
       const respuesta = await fetch("/api/sorteo", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ participanteId }),
+        body: JSON.stringify({ token }),
       });
 
       const datos = await respuesta.json();

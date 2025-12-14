@@ -1,11 +1,16 @@
 import { prisma } from "../../lib/prisma";
 import { NextResponse } from "next/server";
 
-// Obtener todos los participantes
+// Obtener todos los participantes (solo nombres, sin IDs ni tokens)
 export async function GET() {
     try {
         const participantes = await prisma.participante.findMany({
             orderBy: { id: "asc" },
+            select: {
+                id: true,
+                nombre: true,
+                // NO exponer token
+            },
         });
         return NextResponse.json(participantes);
     } catch (error) {
