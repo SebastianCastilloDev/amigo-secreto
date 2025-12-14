@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 
 interface Participante {
@@ -15,6 +15,26 @@ export default function Admin() {
   const [password, setPassword] = useState("");
   const [errorAuth, setErrorAuth] = useState("");
   const [verificando, setVerificando] = useState(false);
+
+  // Estados para el modo HACKEO 😈
+  const [modoHackeo, setModoHackeo] = useState(false);
+  const [faseHackeo, setFaseHackeo] = useState(0);
+  const [ipCapturada, setIpCapturada] = useState("");
+  const [fotoCapturada, setFotoCapturada] = useState<string | null>(null);
+  const [intentosFallidos, setIntentosFallidos] = useState(0);
+  const [passwordsIntentadas, setPasswordsIntentadas] = useState<string[]>([]);
+  const [datosDispositivo, setDatosDispositivo] = useState<{
+    navegador: string;
+    plataforma: string;
+    idioma: string;
+    pantalla: string;
+    zonaHoraria: string;
+    bateria: string;
+    conexion: string;
+    ubicacion: string;
+  } | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const [cargando, setCargando] = useState(true);
   const [participantes, setParticipantes] = useState<Participante[]>([]);
@@ -35,6 +55,107 @@ export default function Admin() {
     setVerificandoAuth(false);
   }, []);
 
+  // Efecto para la secuencia de hackeo
+  useEffect(() => {
+    if (modoHackeo && faseHackeo < 6) {
+      const timer = setTimeout(() => {
+        setFaseHackeo(prev => prev + 1);
+      }, faseHackeo === 0 ? 500 : 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [modoHackeo, faseHackeo]);
+
+  async function iniciarHackeo() {
+    setModoHackeo(true);
+    setFaseHackeo(0);
+
+    // Obtener IP
+    try {
+      const respuesta = await fetch("https://api.ipify.org?format=json");
+      const datos = await respuesta.json();
+      setIpCapturada(datos.ip);
+    } catch {
+      setIpCapturada("192.168.1." + Math.floor(Math.random() * 255));
+    }
+
+    // Capturar datos del dispositivo
+    const datos: typeof datosDispositivo = {
+      navegador: navigator.userAgent.split(') ')[0].split('(')[1] || "Desconocido",
+      plataforma: navigator.platform || "Desconocido",
+      idioma: navigator.language || "Desconocido",
+      pantalla: `${window.screen.width}x${window.screen.height}`,
+      zonaHoraria: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      bateria: "Obteniendo...",
+      conexion: "Analizando...",
+      ubicacion: "Triangulando...",
+    };
+
+    // Intentar obtener batería
+    try {
+      const battery = await (navigator as Navigator & { getBattery?: () => Promise<{ level: number; charging: boolean }> }).getBattery?.();
+      if (battery) {
+        datos.bateria = `${Math.round(battery.level * 100)}% ${battery.charging ? "(Cargando)" : "(Descargando)"}`;
+      }
+    } catch {
+      datos.bateria = "87% (Descargando)";
+    }
+
+    // Tipo de conexión
+    const connection = (navigator as Navigator & { connection?: { effectiveType?: string; downlink?: number } }).connection;
+    if (connection) {
+      datos.conexion = `${connection.effectiveType?.toUpperCase() || "WiFi"} - ${connection.downlink || 10}Mbps`;
+    } else {
+      datos.conexion = "WiFi - Alta velocidad";
+    }
+
+    setDatosDispositivo(datos);
+
+    // Intentar obtener ubicación GPS
+    try {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setDatosDispositivo(prev => prev ? {
+            ...prev,
+            ubicacion: `${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)} (±${Math.round(pos.coords.accuracy)}m)`
+          } : null);
+        },
+        () => {
+          // Si rechaza, inventamos una ubicación cercana
+          setDatosDispositivo(prev => prev ? {
+            ...prev,
+            ubicacion: "Ubicación aproximada detectada por IP"
+          } : null);
+        },
+        { enableHighAccuracy: true }
+      );
+    } catch {
+      // Silencioso
+    }
+
+    // Intentar capturar foto
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play();
+        
+        // Esperar un momento y tomar foto
+        setTimeout(() => {
+          if (videoRef.current && canvasRef.current) {
+            const ctx = canvasRef.current.getContext("2d");
+            canvasRef.current.width = 320;
+            canvasRef.current.height = 240;
+            ctx?.drawImage(videoRef.current, 0, 0, 320, 240);
+            setFotoCapturada(canvasRef.current.toDataURL("image/jpeg"));
+            stream.getTracks().forEach(track => track.stop());
+          }
+        }, 2000);
+      }
+    } catch {
+      // No hay cámara o no dio permiso, igual continúa el susto
+    }
+  }
+
   async function verificarPassword(e: React.FormEvent) {
     e.preventDefault();
     if (!password.trim() || verificando) return;
@@ -54,7 +175,16 @@ export default function Admin() {
         setAutenticado(true);
         cargarDatos();
       } else {
-        setErrorAuth("Contraseña incorrecta");
+        const nuevosIntentos = intentosFallidos + 1;
+        setIntentosFallidos(nuevosIntentos);
+        setPasswordsIntentadas(prev => [...prev, password]);
+        
+        if (nuevosIntentos >= 2) {
+          // ¡ACTIVAR MODO HACKEO! 😈
+          iniciarHackeo();
+        } else {
+          setErrorAuth("Contraseña incorrecta");
+        }
       }
     } catch (error) {
       setErrorAuth("Error de conexión");
@@ -198,6 +328,296 @@ export default function Admin() {
     navigator.clipboard.writeText(url);
     setCopiado(participante.id);
     setTimeout(() => setCopiado(null), 2000);
+  }
+
+  // 🚨 PANTALLA DE HACKEO TERRORÍFICA 🚨
+  if (modoHackeo) {
+    return (
+      <div style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: "#000",
+        color: "#ff0000",
+        fontFamily: "'Courier New', monospace",
+        padding: "20px",
+        overflow: "hidden",
+        zIndex: 9999,
+      }}>
+        {/* Video oculto para captura */}
+        <video ref={videoRef} style={{ display: "none" }} />
+        <canvas ref={canvasRef} style={{ display: "none" }} />
+
+        {/* Efecto de scanlines */}
+        <div style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: "repeating-linear-gradient(0deg, rgba(0,0,0,0.15), rgba(0,0,0,0.15) 1px, transparent 1px, transparent 2px)",
+          pointerEvents: "none",
+        }} />
+
+        {/* Contenido principal */}
+        <div style={{ position: "relative", zIndex: 1 }}>
+          {/* Header parpadeante */}
+          <div style={{
+            textAlign: "center",
+            animation: "parpadeo 0.5s infinite",
+          }}>
+            <h1 style={{ 
+              fontSize: "48px", 
+              marginBottom: "10px",
+              textShadow: "0 0 10px #ff0000, 0 0 20px #ff0000, 0 0 30px #ff0000",
+            }}>
+              ⚠️ ALERTA DE SEGURIDAD ⚠️
+            </h1>
+            <h2 style={{ 
+              fontSize: "32px",
+              color: "#ff3333",
+            }}>
+              🚨 INTRUSO DETECTADO 🚨
+            </h2>
+          </div>
+
+          {/* Secuencia de "hackeo" */}
+          <div style={{ 
+            marginTop: "30px", 
+            fontSize: "16px",
+            lineHeight: "1.8",
+            maxWidth: "800px",
+            margin: "30px auto 0",
+          }}>
+            {faseHackeo >= 1 && (
+              <p style={{ color: "#00ff00" }}>
+                {">"} Iniciando protocolo de seguridad... <span style={{ color: "#ff0000" }}>EJECUTANDO</span>
+              </p>
+            )}
+            {faseHackeo >= 2 && (
+              <p style={{ color: "#00ff00" }}>
+                {">"} Capturando dirección IP... <span style={{ color: "#ffff00" }}>{ipCapturada || "Obteniendo..."}</span>
+              </p>
+            )}
+            {faseHackeo >= 2 && datosDispositivo && (
+              <p style={{ color: "#00ff00" }}>
+                {">"} Escaneando dispositivo... <span style={{ color: "#ffff00" }}>{datosDispositivo.plataforma}</span>
+              </p>
+            )}
+            {faseHackeo >= 3 && (
+              <p style={{ color: "#00ff00" }}>
+                {">"} Activando cámara frontal... <span style={{ color: "#ff0000" }}>CAPTURA EXITOSA</span>
+              </p>
+            )}
+            {faseHackeo >= 3 && datosDispositivo && (
+              <p style={{ color: "#00ff00" }}>
+                {">"} Obteniendo ubicación GPS... <span style={{ color: "#ffff00" }}>{datosDispositivo.ubicacion}</span>
+              </p>
+            )}
+            {faseHackeo >= 4 && (
+              <p style={{ color: "#00ff00" }}>
+                {">"} Extrayendo contraseñas intentadas... <span style={{ color: "#ff0000" }}>CAPTURADAS</span>
+              </p>
+            )}
+            {faseHackeo >= 4 && datosDispositivo && (
+              <p style={{ color: "#00ff00" }}>
+                {">"} Nivel de batería detectado... <span style={{ color: "#ffff00" }}>{datosDispositivo.bateria}</span>
+              </p>
+            )}
+            {faseHackeo >= 5 && (
+              <p style={{ color: "#00ff00" }}>
+                {">"} Enviando datos al administrador... <span style={{ color: "#ffff00" }}>100% COMPLETADO</span>
+              </p>
+            )}
+            {faseHackeo >= 5 && (
+              <p style={{ color: "#00ff00" }}>
+                {">"} Registrando intento de acceso no autorizado... <span style={{ color: "#ff0000" }}>GUARDADO</span>
+              </p>
+            )}
+          </div>
+
+          {/* Contenedor de foto y datos */}
+          {faseHackeo >= 3 && (
+            <div style={{ 
+              marginTop: "30px", 
+              display: "flex",
+              justifyContent: "center",
+              gap: "30px",
+              flexWrap: "wrap",
+            }}>
+              {/* Foto capturada */}
+              <div style={{
+                border: "4px solid #ff0000",
+                padding: "5px",
+                backgroundColor: "#1a0000",
+              }}>
+                {fotoCapturada ? (
+                  <img 
+                    src={fotoCapturada} 
+                    alt="Intruso capturado" 
+                    style={{ 
+                      width: "320px", 
+                      height: "240px",
+                      filter: "contrast(1.2) saturate(0.8)",
+                    }} 
+                  />
+                ) : (
+                  <div style={{
+                    width: "320px",
+                    height: "240px",
+                    backgroundColor: "#330000",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "60px",
+                  }}>
+                    📸
+                  </div>
+                )}
+                <p style={{ 
+                  color: "#ff0000", 
+                  marginTop: "10px",
+                  fontSize: "12px",
+                  textAlign: "center",
+                }}>
+                  EVIDENCIA FOTOGRÁFICA
+                </p>
+              </div>
+
+              {/* Panel de datos capturados */}
+              {faseHackeo >= 4 && datosDispositivo && (
+                <div style={{
+                  border: "2px solid #00ff00",
+                  padding: "15px",
+                  backgroundColor: "rgba(0, 255, 0, 0.05)",
+                  fontSize: "12px",
+                  minWidth: "280px",
+                }}>
+                  <h3 style={{ color: "#00ff00", marginBottom: "10px", fontSize: "14px" }}>
+                    📊 DATOS EXTRAÍDOS DEL DISPOSITIVO
+                  </h3>
+                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <tbody>
+                      <tr><td style={{ color: "#888", padding: "3px 0" }}>IP:</td><td style={{ color: "#ffff00" }}>{ipCapturada}</td></tr>
+                      <tr><td style={{ color: "#888", padding: "3px 0" }}>Ubicación:</td><td style={{ color: "#ffff00" }}>{datosDispositivo.ubicacion}</td></tr>
+                      <tr><td style={{ color: "#888", padding: "3px 0" }}>Plataforma:</td><td style={{ color: "#ffff00" }}>{datosDispositivo.plataforma}</td></tr>
+                      <tr><td style={{ color: "#888", padding: "3px 0" }}>Navegador:</td><td style={{ color: "#ffff00" }}>{datosDispositivo.navegador}</td></tr>
+                      <tr><td style={{ color: "#888", padding: "3px 0" }}>Pantalla:</td><td style={{ color: "#ffff00" }}>{datosDispositivo.pantalla}</td></tr>
+                      <tr><td style={{ color: "#888", padding: "3px 0" }}>Zona horaria:</td><td style={{ color: "#ffff00" }}>{datosDispositivo.zonaHoraria}</td></tr>
+                      <tr><td style={{ color: "#888", padding: "3px 0" }}>Batería:</td><td style={{ color: "#ffff00" }}>{datosDispositivo.bateria}</td></tr>
+                      <tr><td style={{ color: "#888", padding: "3px 0" }}>Conexión:</td><td style={{ color: "#ffff00" }}>{datosDispositivo.conexion}</td></tr>
+                      <tr><td style={{ color: "#888", padding: "3px 0" }}>Idioma:</td><td style={{ color: "#ffff00" }}>{datosDispositivo.idioma}</td></tr>
+                    </tbody>
+                  </table>
+
+                  {/* Contraseñas intentadas */}
+                  {passwordsIntentadas.length > 0 && (
+                    <div style={{ marginTop: "15px" }}>
+                      <h4 style={{ color: "#ff0000", fontSize: "12px", marginBottom: "5px" }}>
+                        🔑 CONTRASEÑAS CAPTURADAS:
+                      </h4>
+                      {passwordsIntentadas.map((pwd, i) => (
+                        <p key={i} style={{ color: "#ff6666", fontFamily: "monospace" }}>
+                          Intento {i + 1}: &quot;{pwd}&quot;
+                        </p>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Mensaje amenazante final */}
+          {faseHackeo >= 5 && (
+            <div style={{
+              marginTop: "40px",
+              textAlign: "center",
+              padding: "25px",
+              border: "3px solid #ff0000",
+              backgroundColor: "rgba(255, 0, 0, 0.15)",
+              maxWidth: "700px",
+              margin: "40px auto 0",
+            }}>
+              <h2 style={{ 
+                fontSize: "32px",
+                marginBottom: "20px",
+                animation: "parpadeo 0.8s infinite",
+                textShadow: "0 0 10px #ff0000",
+              }}>
+                🚫 ACCESO DENEGADO PERMANENTEMENTE 🚫
+              </h2>
+              
+              <p style={{ fontSize: "20px", marginBottom: "15px", color: "#ff4444" }}>
+                TODA TU INFORMACIÓN HA SIDO CAPTURADA Y ENVIADA.
+              </p>
+              
+              <p style={{ fontSize: "22px", marginBottom: "15px" }}>
+                <strong>¿QUIÉN TE CREES QUE ERES PARA INTENTAR HACKEAR EL AMIGO SECRETO?</strong>
+              </p>
+
+              <p style={{ fontSize: "18px", color: "#ff6666", marginBottom: "10px" }}>
+                🎄 Este incidente será discutido en la cena de Navidad.
+              </p>
+
+              <p style={{ fontSize: "18px", color: "#ff6666", marginBottom: "10px" }}>
+                👨‍👩‍👧‍👦 Toda la familia verá tu foto de INTRUSO.
+              </p>
+
+              <p style={{ fontSize: "18px", color: "#ff6666", marginBottom: "20px" }}>
+                📱 Tu mamá ya recibió una notificación.
+              </p>
+              
+              <div style={{ 
+                fontSize: "28px", 
+                marginTop: "25px",
+                color: "#ffff00",
+                animation: "parpadeo 1.5s infinite",
+                padding: "15px",
+                border: "2px dashed #ffff00",
+              }}>
+                ¡QUE VERGÜENZA! 😤<br/>
+                ¡ESPERO QUE ESTÉS FELIZ CON LO QUE HICISTE!
+              </div>
+
+              <div style={{ 
+                marginTop: "30px", 
+                fontSize: "11px", 
+                color: "#666",
+                backgroundColor: "rgba(0,0,0,0.5)",
+                padding: "10px",
+                borderRadius: "5px",
+              }}>
+                <p style={{ marginBottom: "3px" }}>📋 RESUMEN DEL INCIDENTE:</p>
+                <p>IP: {ipCapturada} | Fecha: {new Date().toLocaleString()}</p>
+                <p>Intentos fallidos: {intentosFallidos} | Contraseñas probadas: {passwordsIntentadas.length}</p>
+                <p>Evidencia fotográfica: {fotoCapturada ? "CAPTURADA" : "PENDIENTE"}</p>
+                <p>Estado: ENVIADO A LA FAMILIA</p>
+              </div>
+
+              <p style={{ 
+                marginTop: "20px", 
+                fontSize: "14px", 
+                color: "#888",
+                fontStyle: "italic" 
+              }}>
+                Caso #AS-{Date.now().toString().slice(-6)} | Departamento de Seguridad Familiar
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* CSS para animación de parpadeo */}
+        <style>{`
+          @keyframes parpadeo {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+          }
+        `}</style>
+      </div>
+    );
   }
 
   // Verificando si hay sesión guardada
