@@ -122,54 +122,57 @@ export default function Admin() {
   }
 
   return (
-    <main>
-      <h1>⚙️ Administrar Amigo Secreto</h1>
-      
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <Link href="/">← Volver al inicio</Link>
-        <button 
-          onClick={cerrarSesion}
-          style={{ 
-            padding: "5px 10px", 
-            backgroundColor: "#f5f5f5",
-            border: "1px solid #ccc",
-            cursor: "pointer"
-          }}
-        >
-          🚪 Cerrar sesión
-        </button>
+    <main className="min-h-dvh bg-slate-900 text-white p-4 sm:p-6 pb-10">
+      {/* Header */}
+      <div className="max-w-2xl mx-auto">
+        <div className="flex items-center justify-between mb-6">
+          <Link 
+            href="/" 
+            className="text-white/60 hover:text-white transition-colors text-sm flex items-center gap-1"
+          >
+            ← Volver
+          </Link>
+          <button 
+            onClick={cerrarSesion}
+            className="px-3 py-1.5 text-sm bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
+          >
+            Cerrar sesión
+          </button>
+        </div>
+
+        <h1 className="text-2xl sm:text-3xl font-bold mb-8">⚙️ Panel de Admin</h1>
+
+        {/* Formulario para agregar participante */}
+        <FormularioParticipante
+          nuevoNombre={nuevoNombre}
+          setNuevoNombre={setNuevoNombre}
+          guardando={guardando}
+          errorAgregar={errorAgregar}
+          onSubmit={agregarParticipante}
+        />
+
+        {/* Lista de participantes */}
+        <ListaParticipantes
+          participantes={participantes}
+          copiado={copiado}
+          onGenerarInvitacion={generarInvitacion}
+          onEliminar={eliminarParticipante}
+        />
+
+        {/* Estado de la tómbola */}
+        <EstadoTombola
+          sorteoRealizado={sorteoRealizado}
+          mensajeSorteo={mensajeSorteo}
+          onReiniciar={reiniciarSorteo}
+        />
+
+        {/* Sección de Incidentes de Seguridad */}
+        <SeccionIncidentes
+          incidentes={incidentes}
+          verIncidentes={verIncidentes}
+          setVerIncidentes={setVerIncidentes}
+        />
       </div>
-
-      {/* Formulario para agregar participante */}
-      <FormularioParticipante
-        nuevoNombre={nuevoNombre}
-        setNuevoNombre={setNuevoNombre}
-        guardando={guardando}
-        errorAgregar={errorAgregar}
-        onSubmit={agregarParticipante}
-      />
-
-      {/* Lista de participantes */}
-      <ListaParticipantes
-        participantes={participantes}
-        copiado={copiado}
-        onGenerarInvitacion={generarInvitacion}
-        onEliminar={eliminarParticipante}
-      />
-
-      {/* Estado de la tómbola */}
-      <EstadoTombola
-        sorteoRealizado={sorteoRealizado}
-        mensajeSorteo={mensajeSorteo}
-        onReiniciar={reiniciarSorteo}
-      />
-
-      {/* Sección de Incidentes de Seguridad */}
-      <SeccionIncidentes
-        incidentes={incidentes}
-        verIncidentes={verIncidentes}
-        setVerIncidentes={setVerIncidentes}
-      />
     </main>
   );
 }

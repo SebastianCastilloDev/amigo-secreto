@@ -16,34 +16,34 @@ export function FormularioLogin({
   onSubmit 
 }: Props) {
   return (
-    <main>
-      <h1>⚙️ Administrar Amigo Secreto</h1>
-      <div style={{ marginTop: "30px", textAlign: "center" }}>
-        <p style={{ fontSize: "48px" }}>🔐</p>
-        <p style={{ marginBottom: "20px" }}>Ingresa la contraseña de administrador</p>
-        <form onSubmit={onSubmit}>
+    <main className="min-h-dvh bg-slate-900 flex flex-col items-center justify-center p-6">
+      <div className="w-full max-w-sm">
+        <div className="text-center mb-8">
+          <div className="text-6xl mb-4">🔐</div>
+          <h1 className="text-2xl font-bold text-white mb-2">Panel de Admin</h1>
+          <p className="text-white/50 text-sm">Ingresa la contraseña para continuar</p>
+        </div>
+        
+        <form onSubmit={onSubmit} className="space-y-4">
           <input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Contraseña"
             disabled={verificando}
-            style={{ 
-              padding: "10px", 
-              fontSize: "16px",
-              marginRight: "10px" 
-            }}
+            className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder:text-white/40 focus:outline-none focus:border-white/40 transition-colors"
           />
           <button 
             type="submit" 
             disabled={verificando || !password.trim()}
-            style={{ padding: "10px 20px", fontSize: "16px" }}
+            className="w-full py-3 bg-white text-slate-900 font-semibold rounded-xl hover:bg-white/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
           >
             {verificando ? "Verificando..." : "Entrar"}
           </button>
         </form>
+        
         {errorAuth && (
-          <p style={{ color: "red", marginTop: "10px" }}>{errorAuth}</p>
+          <p className="mt-4 text-red-400 text-sm text-center">{errorAuth}</p>
         )}
       </div>
     </main>

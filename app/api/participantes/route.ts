@@ -1,7 +1,7 @@
 import { prisma } from "../../lib/prisma";
 import { NextResponse } from "next/server";
 
-// Obtener todos los participantes (solo nombres, sin IDs ni tokens)
+// Obtener todos los participantes con su asignación (para admin)
 export async function GET() {
     try {
         const participantes = await prisma.participante.findMany({
@@ -9,10 +9,26 @@ export async function GET() {
             select: {
                 id: true,
                 nombre: true,
-                // NO exponer token
+                regalaA: {
+                    select: {
+                        quienRecibe: {
+                            select: {
+                                nombre: true,
+                            },
+                        },
+                    },
+                },
             },
         });
-        return NextResponse.json(participantes);
+        
+        // Transformar para incluir el nombre del amigo secreto asignado
+        const resultado = participantes.map((p) => ({
+            id: p.id,
+            nombre: p.nombre,
+            amigoSecreto: p.regalaA?.quienRecibe?.nombre || null,
+        }));
+        
+        return NextResponse.json(resultado);
     } catch (error) {
         console.error("Error al obtener participantes:", error);
         return NextResponse.json(

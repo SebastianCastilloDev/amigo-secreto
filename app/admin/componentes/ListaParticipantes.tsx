@@ -16,38 +16,42 @@ export function ListaParticipantes({
   onEliminar,
 }: Props) {
   return (
-    <section style={{ marginTop: "20px" }}>
-      <h2>Participantes ({participantes.length})</h2>
+    <section className="bg-white/5 rounded-2xl p-5 mb-6">
+      <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+        <span>👥</span> Participantes 
+        <span className="text-white/50 font-normal">({participantes.length})</span>
+      </h2>
+      
       {participantes.length === 0 ? (
-        <p>No hay participantes aún. ¡Agrega el primero!</p>
+        <p className="text-white/50 text-sm py-4 text-center">No hay participantes aún. ¡Agrega el primero!</p>
       ) : (
-        <ul>
+        <div className="space-y-2">
           {participantes.map((p) => (
-            <li key={p.id} style={{ marginBottom: "8px" }}>
-              {p.nombre}
+            <div 
+              key={p.id} 
+              className="flex items-center gap-3 bg-white/5 rounded-xl p-3 group"
+            >
+              <span className="flex-1 font-medium truncate">{p.nombre}</span>
               <button
                 onClick={() => onGenerarInvitacion(p)}
-                style={{ 
-                  marginLeft: "10px",
-                  backgroundColor: copiado === p.id ? "#4CAF50" : "#2196F3",
-                  color: "white",
-                  border: "none",
-                  padding: "4px 8px",
-                  borderRadius: "4px",
-                  cursor: "pointer"
-                }}
+                className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors shrink-0 ${
+                  copiado === p.id 
+                    ? "bg-emerald-500 text-white" 
+                    : "bg-blue-500 hover:bg-blue-600 text-white"
+                }`}
               >
-                {copiado === p.id ? "✅ Copiado" : "📋 Copiar invitación"}
+                {copiado === p.id ? "✓ Copiado" : "📋 Copiar link"}
               </button>
               <button
                 onClick={() => onEliminar(p.id)}
-                style={{ marginLeft: "10px" }}
+                className="p-1.5 text-white/30 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                title="Eliminar"
               >
-                ❌
+                ✕
               </button>
-            </li>
+            </div>
           ))}
-        </ul>
+        </div>
       )}
     </section>
   );

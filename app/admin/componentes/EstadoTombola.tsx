@@ -12,39 +12,29 @@ export function EstadoTombola({
   onReiniciar,
 }: Props) {
   return (
-    <section style={{ marginTop: "30px" }}>
-      <h2>🎰 Estado de la Tómbola</h2>
+    <section className="bg-white/5 rounded-2xl p-5 mb-6">
+      <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+        <span>🎰</span> Estado de la Tómbola
+      </h2>
       
       {sorteoRealizado ? (
         <div>
-          <p style={{ 
-            backgroundColor: "#e8f5e9", 
-            padding: "10px", 
-            borderRadius: "5px",
-            marginBottom: "15px" 
-          }}>
-            ✅ Algunos participantes ya sacaron su papelito de la tómbola.
-          </p>
+          <div className="bg-emerald-500/20 border border-emerald-500/30 rounded-xl p-4 mb-4">
+            <p className="text-emerald-300 text-sm">✅ Algunos participantes ya sacaron su papelito de la tómbola.</p>
+          </div>
           
           <button
             onClick={onReiniciar}
-            style={{ 
-              padding: "10px 20px", 
-              fontSize: "16px",
-              backgroundColor: "#ffebee",
-              border: "1px solid #f44336",
-              cursor: "pointer"
-            }}
+            className="w-full py-3 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-300 rounded-xl transition-colors text-sm"
           >
-            🗑️ Reiniciar tómbola (borrar todas las asignaciones)
+            🗑️ Reiniciar tómbola (borrar asignaciones)
           </button>
           
-          {mensajeSorteo && <p style={{ marginTop: "10px" }}>{mensajeSorteo}</p>}
+          {mensajeSorteo && <p className="mt-3 text-white/60 text-sm">{mensajeSorteo}</p>}
         </div>
       ) : (
-        <p style={{ color: "#666" }}>
-          Nadie ha sacado papelito aún. Cuando los participantes entren a la página principal, 
-          cada uno sacará su amigo secreto de la tómbola.
+        <p className="text-white/50 text-sm">
+          Nadie ha sacado papelito aún. Los participantes verán su amigo secreto cuando accedan con su enlace personal.
         </p>
       )}
     </section>
