@@ -13,12 +13,12 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "🎁 Amigo Secreto - Navidad 2024",
-  description: "¡Descubre a quién le regalas esta Navidad! Sorteo de amigo secreto fácil y divertido.",
-  keywords: ["amigo secreto", "navidad", "sorteo", "regalo", "intercambio"],
+  title: "🎁 Amigo Secreto - Navidad 2025",
+  description: "¡Descubre a quién le regalas esta Navidad! Sorteo de amigo secreto fácil y divertido para toda la familia.",
+  keywords: ["amigo secreto", "navidad 2025", "sorteo", "regalo", "intercambio", "familia"],
   authors: [{ name: "Tu Nombre" }],
   openGraph: {
-    title: "🎁 Amigo Secreto - Navidad 2024",
+    title: "🎁 Amigo Secreto - Navidad 2025",
     description: "¡Descubre a quién le regalas esta Navidad!",
     type: "website",
   },
@@ -27,7 +27,9 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#1a1a2e",
+  maximumScale: 1,
+  userScalable: false,
+  themeColor: "#0f172a",
 };
 
 export default function RootLayout({
