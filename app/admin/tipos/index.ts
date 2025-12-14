@@ -2,6 +2,7 @@ export interface Participante {
     id: number;
     nombre: string;
     token?: string;
+    amigoSecreto?: string | null;
 }
 
 export interface DatosDispositivo {
