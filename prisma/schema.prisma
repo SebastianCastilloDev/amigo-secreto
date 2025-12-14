@@ -34,3 +34,27 @@ model Asignacion {
   quienRecibeId Int          @unique
   quienRecibe   Participante @relation("QuienRecibe", fields: [quienRecibeId], references: [id])
 }
+
+// Registro de intentos de acceso no autorizado 🚨
+model Incidente {
+  id              Int      @id @default(autoincrement())
+  fecha           DateTime @default(now())
+  
+  // Datos capturados
+  ip              String?
+  ubicacion       String?
+  latitud         Float?
+  longitud        Float?
+  plataforma      String?
+  navegador       String?
+  pantalla        String?
+  zonaHoraria     String?
+  bateria         String?
+  conexion        String?
+  idioma          String?
+  foto            String?  @db.Text
+  
+  // Contraseñas intentadas
+  passwords       String[] 
+  intentos        Int      @default(0)
+}

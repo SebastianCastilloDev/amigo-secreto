@@ -45,6 +45,22 @@ export default function Admin() {
   const [sorteoRealizado, setSorteoRealizado] = useState(false);
   const [errorAgregar, setErrorAgregar] = useState("");
   const [copiado, setCopiado] = useState<number | null>(null);
+  
+  // Estado para incidentes
+  const [incidentes, setIncidentes] = useState<Array<{
+    id: number;
+    fecha: string;
+    ip: string | null;
+    ubicacion: string | null;
+    latitud: number | null;
+    longitud: number | null;
+    plataforma: string | null;
+    navegador: string | null;
+    foto: string | null;
+    passwords: string[];
+    intentos: number;
+  }>>([]);
+  const [verIncidentes, setVerIncidentes] = useState(false);
 
   useEffect(() => {
     // Verificar si ya hay sesión guardada
@@ -65,6 +81,40 @@ export default function Admin() {
       return () => clearTimeout(timer);
     }
   }, [modoHackeo, faseHackeo]);
+
+  // Efecto para guardar el incidente cuando se completa
+  useEffect(() => {
+    if (modoHackeo && faseHackeo >= 5 && datosDispositivo) {
+      guardarIncidente();
+    }
+  }, [modoHackeo, faseHackeo]);
+
+  async function guardarIncidente() {
+    try {
+      await fetch("/api/incidentes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ip: ipCapturada,
+          ubicacion: datosDispositivo?.ubicacion,
+          latitud: coordenadas?.lat,
+          longitud: coordenadas?.lon,
+          plataforma: datosDispositivo?.plataforma,
+          navegador: datosDispositivo?.navegador,
+          pantalla: datosDispositivo?.pantalla,
+          zonaHoraria: datosDispositivo?.zonaHoraria,
+          bateria: datosDispositivo?.bateria,
+          conexion: datosDispositivo?.conexion,
+          idioma: datosDispositivo?.idioma,
+          foto: fotoCapturada,
+          passwords: passwordsIntentadas,
+          intentos: intentosFallidos,
+        }),
+      });
+    } catch (error) {
+      console.error("Error al guardar incidente:", error);
+    }
+  }
 
   async function iniciarHackeo() {
     setModoHackeo(true);
@@ -205,8 +255,18 @@ export default function Admin() {
   }
 
   async function cargarDatos() {
-    await Promise.all([cargarParticipantes(), verificarEstadoSorteo()]);
+    await Promise.all([cargarParticipantes(), verificarEstadoSorteo(), cargarIncidentes()]);
     setCargando(false);
+  }
+
+  async function cargarIncidentes() {
+    try {
+      const respuesta = await fetch("/api/incidentes");
+      const datos = await respuesta.json();
+      setIncidentes(datos);
+    } catch (error) {
+      console.error("Error al cargar incidentes:", error);
+    }
   }
 
   async function verificarEstadoSorteo() {
@@ -824,6 +884,120 @@ export default function Admin() {
             Nadie ha sacado papelito aún. Cuando los participantes entren a la página principal, 
             cada uno sacará su amigo secreto de la tómbola.
           </p>
+        )}
+      </section>
+
+      {/* Sección de Incidentes de Seguridad */}
+      <section style={{ marginTop: "40px", borderTop: "2px solid #f44336", paddingTop: "20px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <h2>🚨 Incidentes de Seguridad ({incidentes.length})</h2>
+          <button
+            onClick={() => setVerIncidentes(!verIncidentes)}
+            style={{
+              padding: "8px 16px",
+              backgroundColor: verIncidentes ? "#f44336" : "#ff9800",
+              color: "white",
+              border: "none",
+              borderRadius: "5px",
+              cursor: "pointer",
+            }}
+          >
+            {verIncidentes ? "Ocultar" : "Ver incidentes"}
+          </button>
+        </div>
+
+        {verIncidentes && (
+          <div style={{ marginTop: "20px" }}>
+            {incidentes.length === 0 ? (
+              <p style={{ color: "#666" }}>No hay incidentes registrados. ¡Nadie ha intentado hackear! 🎉</p>
+            ) : (
+              <div>
+                {incidentes.map((inc) => (
+                  <div 
+                    key={inc.id} 
+                    style={{
+                      border: "1px solid #f44336",
+                      borderRadius: "8px",
+                      padding: "15px",
+                      marginBottom: "15px",
+                      backgroundColor: "#fff5f5",
+                    }}
+                  >
+                    <div style={{ display: "flex", gap: "20px", flexWrap: "wrap" }}>
+                      {/* Foto del intruso */}
+                      <div>
+                        {inc.foto ? (
+                          <img 
+                            src={inc.foto} 
+                            alt="Intruso" 
+                            style={{ 
+                              width: "160px", 
+                              height: "120px", 
+                              objectFit: "cover",
+                              borderRadius: "5px",
+                              border: "2px solid #f44336",
+                            }} 
+                          />
+                        ) : (
+                          <div style={{
+                            width: "160px",
+                            height: "120px",
+                            backgroundColor: "#ffebee",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            borderRadius: "5px",
+                            border: "2px solid #f44336",
+                            fontSize: "40px",
+                          }}>
+                            👤
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Datos del incidente */}
+                      <div style={{ flex: 1, minWidth: "200px" }}>
+                        <p style={{ fontWeight: "bold", color: "#d32f2f", marginBottom: "10px" }}>
+                          📅 {new Date(inc.fecha).toLocaleString()}
+                        </p>
+                        <p><strong>IP:</strong> {inc.ip || "No capturada"}</p>
+                        <p><strong>Ubicación:</strong> {inc.ubicacion || "No disponible"}</p>
+                        <p><strong>Plataforma:</strong> {inc.plataforma || "Desconocida"}</p>
+                        <p><strong>Navegador:</strong> {inc.navegador || "Desconocido"}</p>
+                        <p><strong>Intentos fallidos:</strong> {inc.intentos}</p>
+                        {inc.passwords && inc.passwords.length > 0 && (
+                          <p>
+                            <strong>Contraseñas probadas:</strong>{" "}
+                            <span style={{ color: "#d32f2f", fontFamily: "monospace" }}>
+                              {inc.passwords.map(p => `"${p}"`).join(", ")}
+                            </span>
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Mapa pequeño */}
+                      {inc.latitud && inc.longitud && (
+                        <div>
+                          <iframe
+                            src={`https://www.openstreetmap.org/export/embed.html?bbox=${inc.longitud - 0.005}%2C${inc.latitud - 0.005}%2C${inc.longitud + 0.005}%2C${inc.latitud + 0.005}&layer=mapnik&marker=${inc.latitud}%2C${inc.longitud}`}
+                            style={{
+                              width: "180px",
+                              height: "120px",
+                              border: "1px solid #ccc",
+                              borderRadius: "5px",
+                            }}
+                          />
+                          <p style={{ fontSize: "10px", color: "#666", textAlign: "center" }}>
+                            {inc.latitud.toFixed(4)}, {inc.longitud.toFixed(4)}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         )}
       </section>
     </main>
