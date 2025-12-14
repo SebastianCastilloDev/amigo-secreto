@@ -10,6 +10,12 @@ interface Participante {
 }
 
 export default function Admin() {
+  const [autenticado, setAutenticado] = useState(false);
+  const [verificandoAuth, setVerificandoAuth] = useState(true);
+  const [password, setPassword] = useState("");
+  const [errorAuth, setErrorAuth] = useState("");
+  const [verificando, setVerificando] = useState(false);
+
   const [cargando, setCargando] = useState(true);
   const [participantes, setParticipantes] = useState<Participante[]>([]);
   const [nuevoNombre, setNuevoNombre] = useState("");
@@ -20,8 +26,48 @@ export default function Admin() {
   const [copiado, setCopiado] = useState<number | null>(null);
 
   useEffect(() => {
-    cargarDatos();
+    // Verificar si ya hay sesión guardada
+    const sesion = sessionStorage.getItem("admin_auth");
+    if (sesion === "true") {
+      setAutenticado(true);
+      cargarDatos();
+    }
+    setVerificandoAuth(false);
   }, []);
+
+  async function verificarPassword(e: React.FormEvent) {
+    e.preventDefault();
+    if (!password.trim() || verificando) return;
+
+    setVerificando(true);
+    setErrorAuth("");
+
+    try {
+      const respuesta = await fetch("/api/admin/verificar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      });
+
+      if (respuesta.ok) {
+        sessionStorage.setItem("admin_auth", "true");
+        setAutenticado(true);
+        cargarDatos();
+      } else {
+        setErrorAuth("Contraseña incorrecta");
+      }
+    } catch (error) {
+      setErrorAuth("Error de conexión");
+    } finally {
+      setVerificando(false);
+    }
+  }
+
+  function cerrarSesion() {
+    sessionStorage.removeItem("admin_auth");
+    setAutenticado(false);
+    setPassword("");
+  }
 
   async function cargarDatos() {
     await Promise.all([cargarParticipantes(), verificarEstadoSorteo()]);
@@ -154,6 +200,53 @@ export default function Admin() {
     setTimeout(() => setCopiado(null), 2000);
   }
 
+  // Verificando si hay sesión guardada
+  if (verificandoAuth) {
+    return (
+      <main>
+        <h1>⚙️ Administrar Amigo Secreto</h1>
+        <div className="spinner"></div>
+      </main>
+    );
+  }
+
+  // Pantalla de login
+  if (!autenticado) {
+    return (
+      <main>
+        <h1>⚙️ Administrar Amigo Secreto</h1>
+        <div style={{ marginTop: "30px", textAlign: "center" }}>
+          <p style={{ fontSize: "48px" }}>🔐</p>
+          <p style={{ marginBottom: "20px" }}>Ingresa la contraseña de administrador</p>
+          <form onSubmit={verificarPassword}>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Contraseña"
+              disabled={verificando}
+              style={{ 
+                padding: "10px", 
+                fontSize: "16px",
+                marginRight: "10px" 
+              }}
+            />
+            <button 
+              type="submit" 
+              disabled={verificando || !password.trim()}
+              style={{ padding: "10px 20px", fontSize: "16px" }}
+            >
+              {verificando ? "Verificando..." : "Entrar"}
+            </button>
+          </form>
+          {errorAuth && (
+            <p style={{ color: "red", marginTop: "10px" }}>{errorAuth}</p>
+          )}
+        </div>
+      </main>
+    );
+  }
+
   if (cargando) {
     return (
       <main>
@@ -168,7 +261,20 @@ export default function Admin() {
     <main>
       <h1>⚙️ Administrar Amigo Secreto</h1>
       
-      <Link href="/">← Volver al inicio</Link>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <Link href="/">← Volver al inicio</Link>
+        <button 
+          onClick={cerrarSesion}
+          style={{ 
+            padding: "5px 10px", 
+            backgroundColor: "#f5f5f5",
+            border: "1px solid #ccc",
+            cursor: "pointer"
+          }}
+        >
+          🚪 Cerrar sesión
+        </button>
+      </div>
 
       {/* Formulario para agregar participante */}
       <section style={{ marginTop: "20px" }}>
