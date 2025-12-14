@@ -115,3 +115,17 @@ export async function GET(request: Request) {
         );
     }
 }
+
+// Eliminar el sorteo (reiniciar)
+export async function DELETE() {
+    try {
+        await prisma.asignacion.deleteMany();
+        return NextResponse.json({ mensaje: "Sorteo eliminado" });
+    } catch (error) {
+        console.error("Error al eliminar sorteo:", error);
+        return NextResponse.json(
+            { error: "Error al eliminar el sorteo" },
+            { status: 500 }
+        );
+    }
+}

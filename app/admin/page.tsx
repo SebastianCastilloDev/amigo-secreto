@@ -15,10 +15,27 @@ export default function Admin() {
   const [guardando, setGuardando] = useState(false);
   const [sorteando, setSorteando] = useState(false);
   const [mensajeSorteo, setMensajeSorteo] = useState("");
+  const [sorteoRealizado, setSorteoRealizado] = useState(false);
+  const [errorAgregar, setErrorAgregar] = useState("");
 
   useEffect(() => {
-    cargarParticipantes();
+    cargarDatos();
   }, []);
+
+  async function cargarDatos() {
+    await Promise.all([cargarParticipantes(), verificarEstadoSorteo()]);
+    setCargando(false);
+  }
+
+  async function verificarEstadoSorteo() {
+    try {
+      const respuesta = await fetch("/api/sorteo/estado");
+      const datos = await respuesta.json();
+      setSorteoRealizado(datos.sorteoRealizado);
+    } catch (error) {
+      console.error("Error al verificar estado:", error);
+    }
+  }
 
   async function cargarParticipantes() {
     try {
@@ -37,6 +54,8 @@ export default function Admin() {
     if (!nuevoNombre.trim() || guardando) return;
 
     setGuardando(true);
+    setErrorAgregar("");
+    
     try {
       const respuesta = await fetch("/api/participantes", {
         method: "POST",
@@ -44,12 +63,17 @@ export default function Admin() {
         body: JSON.stringify({ nombre: nuevoNombre }),
       });
 
+      const datos = await respuesta.json();
+
       if (respuesta.ok) {
         setNuevoNombre("");
         cargarParticipantes();
+      } else {
+        setErrorAgregar(datos.error || "Error al agregar");
       }
     } catch (error) {
       console.error("Error al agregar:", error);
+      setErrorAgregar("Error de conexión");
     } finally {
       setGuardando(false);
     }
@@ -89,6 +113,7 @@ export default function Admin() {
 
       if (respuesta.ok) {
         setMensajeSorteo("✅ ¡Sorteo realizado con éxito!");
+        setSorteoRealizado(true);
       } else {
         setMensajeSorteo(`❌ ${datos.error}`);
       }
@@ -96,6 +121,25 @@ export default function Admin() {
       setMensajeSorteo("❌ Error al realizar el sorteo");
     } finally {
       setSorteando(false);
+    }
+  }
+
+  async function reiniciarSorteo() {
+    if (!confirm("¿Estás seguro de reiniciar el sorteo? Se eliminarán todas las asignaciones.")) {
+      return;
+    }
+
+    try {
+      const respuesta = await fetch("/api/sorteo", {
+        method: "DELETE",
+      });
+
+      if (respuesta.ok) {
+        setMensajeSorteo("🔄 Sorteo reiniciado. Puedes hacer uno nuevo.");
+        setSorteoRealizado(false);
+      }
+    } catch (error) {
+      setMensajeSorteo("❌ Error al reiniciar el sorteo");
     }
   }
 
@@ -130,6 +174,7 @@ export default function Admin() {
             {guardando ? "Agregando..." : "Agregar"}
           </button>
         </form>
+        {errorAgregar && <p style={{ color: "red", marginTop: "5px" }}>{errorAgregar}</p>}
       </section>
 
       {/* Lista de participantes */}
