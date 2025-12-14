@@ -12,3 +12,24 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+// Participante del amigo secreto
+model Participante {
+  id     Int     @id @default(autoincrement())
+  nombre String
+
+  // Relaciones
+  regalaA   Asignacion? @relation("QuienRegala")
+  recibiDe  Asignacion? @relation("QuienRecibe")
+}
+
+// Resultado del sorteo: quién le regala a quién
+model Asignacion {
+  id            Int          @id @default(autoincrement())
+  
+  quienRegalaId Int          @unique
+  quienRegala   Participante @relation("QuienRegala", fields: [quienRegalaId], references: [id])
+  
+  quienRecibeId Int          @unique
+  quienRecibe   Participante @relation("QuienRecibe", fields: [quienRecibeId], references: [id])
+}
