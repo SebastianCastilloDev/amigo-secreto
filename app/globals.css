@@ -1,4 +1,16 @@
-/* Estilos básicos - los mejoraremos después */
+@import "tailwindcss";
+
+/* Variables de colores navideños */
+:root {
+  --christmas-red: #c41e3a;
+  --christmas-red-dark: #9a1830;
+  --christmas-green: #1a5f2a;
+  --christmas-green-dark: #0f3d1a;
+  --christmas-gold: #d4af37;
+  --christmas-cream: #faf6f0;
+  --snow-white: #f8fafc;
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -6,23 +18,156 @@
 }
 
 body {
-  font-family: Arial, sans-serif;
-  padding: 20px;
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f0f23 100%);
+  min-height: 100vh;
+  color: #f8fafc;
+  overflow-x: hidden;
 }
 
-/* Spinner de carga */
+/* Fondo con estrellas sutiles */
+body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: 
+    radial-gradient(2px 2px at 20px 30px, rgba(255,255,255,0.3), transparent),
+    radial-gradient(2px 2px at 40px 70px, rgba(255,255,255,0.2), transparent),
+    radial-gradient(1px 1px at 90px 40px, rgba(255,255,255,0.4), transparent),
+    radial-gradient(2px 2px at 130px 80px, rgba(255,255,255,0.2), transparent),
+    radial-gradient(1px 1px at 160px 120px, rgba(255,255,255,0.3), transparent);
+  background-repeat: repeat;
+  background-size: 200px 150px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Efecto de nieve cayendo */
+@keyframes fall {
+  0% {
+    transform: translateY(-10px) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh) rotate(360deg);
+    opacity: 0.3;
+  }
+}
+
+/* Spinner de carga navideño */
 .spinner {
-  width: 40px;
-  height: 40px;
-  border: 4px solid #ccc;
-  border-top-color: #333;
+  width: 50px;
+  height: 50px;
+  border: 4px solid rgba(196, 30, 58, 0.3);
+  border-top-color: var(--christmas-red);
   border-radius: 50%;
   animation: girar 1s linear infinite;
-  margin-bottom: 10px;
 }
 
 @keyframes girar {
   to {
     transform: rotate(360deg);
   }
+}
+
+/* Animación de pulso para el regalo */
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(196, 30, 58, 0.4), 0 0 40px rgba(196, 30, 58, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(196, 30, 58, 0.6), 0 0 60px rgba(196, 30, 58, 0.3);
+  }
+}
+
+/* Animación de entrada */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in-up 0.5s ease-out forwards;
+}
+
+/* Animación de confeti/celebración */
+@keyframes celebrate {
+  0% {
+    transform: scale(0.8) rotate(-5deg);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.05) rotate(2deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+.animate-celebrate {
+  animation: celebrate 0.6s ease-out forwards;
+}
+
+/* Hover suave para botones */
+.btn-christmas {
+  transition: all 0.3s ease;
+}
+
+.btn-christmas:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+}
+
+.btn-christmas:active {
+  transform: translateY(0);
+}
+
+/* Scrollbar personalizado */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+/* Glassmorphism effect */
+.glass {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Resplandor navideño */
+.glow-red {
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.4);
+}
+
+.glow-green {
+  box-shadow: 0 0 20px rgba(34, 197, 94, 0.4);
+}
+
+.glow-gold {
+  box-shadow: 0 0 20px rgba(234, 179, 8, 0.4);
 }
