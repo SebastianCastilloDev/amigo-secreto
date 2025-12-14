@@ -23,6 +23,7 @@ export default function Admin() {
   const [fotoCapturada, setFotoCapturada] = useState<string | null>(null);
   const [intentosFallidos, setIntentosFallidos] = useState(0);
   const [passwordsIntentadas, setPasswordsIntentadas] = useState<string[]>([]);
+  const [coordenadas, setCoordenadas] = useState<{ lat: number; lon: number } | null>(null);
   const [datosDispositivo, setDatosDispositivo] = useState<{
     navegador: string;
     plataforma: string;
@@ -114,13 +115,17 @@ export default function Admin() {
     try {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
+          setCoordenadas({ lat: pos.coords.latitude, lon: pos.coords.longitude });
           setDatosDispositivo(prev => prev ? {
             ...prev,
             ubicacion: `${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)} (±${Math.round(pos.coords.accuracy)}m)`
           } : null);
         },
         () => {
-          // Si rechaza, inventamos una ubicación cercana
+          // Si rechaza, inventamos una ubicación cercana pero realista
+          const fakeLat = -33.4489 + (Math.random() - 0.5) * 0.1;
+          const fakeLon = -70.6693 + (Math.random() - 0.5) * 0.1;
+          setCoordenadas({ lat: fakeLat, lon: fakeLon });
           setDatosDispositivo(prev => prev ? {
             ...prev,
             ubicacion: "Ubicación aproximada detectada por IP"
@@ -343,7 +348,7 @@ export default function Admin() {
         color: "#ff0000",
         fontFamily: "'Courier New', monospace",
         padding: "20px",
-        overflow: "hidden",
+        overflowY: "auto",
         zIndex: 9999,
       }}>
         {/* Video oculto para captura */}
@@ -525,6 +530,40 @@ export default function Admin() {
                       ))}
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* MAPA DE UBICACIÓN */}
+              {faseHackeo >= 4 && coordenadas && (
+                <div style={{
+                  border: "2px solid #ff0000",
+                  padding: "5px",
+                  backgroundColor: "#1a0000",
+                }}>
+                  <iframe
+                    src={`https://www.openstreetmap.org/export/embed.html?bbox=${coordenadas.lon - 0.01}%2C${coordenadas.lat - 0.01}%2C${coordenadas.lon + 0.01}%2C${coordenadas.lat + 0.01}&layer=mapnik&marker=${coordenadas.lat}%2C${coordenadas.lon}`}
+                    style={{
+                      width: "280px",
+                      height: "200px",
+                      border: "none",
+                      filter: "hue-rotate(180deg) invert(90%)",
+                    }}
+                  />
+                  <p style={{ 
+                    color: "#ff0000", 
+                    marginTop: "10px",
+                    fontSize: "12px",
+                    textAlign: "center",
+                  }}>
+                    📍 TU UBICACIÓN EXACTA
+                  </p>
+                  <p style={{ 
+                    color: "#ffff00", 
+                    fontSize: "10px",
+                    textAlign: "center",
+                  }}>
+                    {coordenadas.lat.toFixed(6)}, {coordenadas.lon.toFixed(6)}
+                  </p>
                 </div>
               )}
             </div>
