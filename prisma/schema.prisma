@@ -17,6 +17,7 @@ datasource db {
 model Participante {
   id     Int     @id @default(autoincrement())
   nombre String
+  token  String? @unique
 
   // Relaciones
   regalaA   Asignacion? @relation("QuienRegala")

@@ -6,6 +6,7 @@ import Link from "next/link";
 interface Participante {
   id: number;
   nombre: string;
+  token?: string;
 }
 
 export default function Admin() {
@@ -16,6 +17,7 @@ export default function Admin() {
   const [mensajeSorteo, setMensajeSorteo] = useState("");
   const [sorteoRealizado, setSorteoRealizado] = useState(false);
   const [errorAgregar, setErrorAgregar] = useState("");
+  const [copiado, setCopiado] = useState<number | null>(null);
 
   useEffect(() => {
     cargarDatos();
@@ -113,6 +115,45 @@ export default function Admin() {
     }
   }
 
+  async function generarInvitacion(participante: Participante) {
+    // Si ya tiene token, solo copiar
+    if (participante.token) {
+      copiarAlPortapapeles(participante);
+      return;
+    }
+
+    // Generar token
+    try {
+      const respuesta = await fetch("/api/participantes/invitacion", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ participanteId: participante.id }),
+      });
+
+      if (respuesta.ok) {
+        const datos = await respuesta.json();
+        // Actualizar el participante con el nuevo token
+        setParticipantes(prev => 
+          prev.map(p => 
+            p.id === participante.id 
+              ? { ...p, token: datos.token } 
+              : p
+          )
+        );
+        copiarAlPortapapeles({ ...participante, token: datos.token });
+      }
+    } catch (error) {
+      console.error("Error al generar invitación:", error);
+    }
+  }
+
+  function copiarAlPortapapeles(participante: Participante) {
+    const url = `${window.location.origin}/participar/${participante.token}`;
+    navigator.clipboard.writeText(url);
+    setCopiado(participante.id);
+    setTimeout(() => setCopiado(null), 2000);
+  }
+
   if (cargando) {
     return (
       <main>
@@ -155,8 +196,22 @@ export default function Admin() {
         ) : (
           <ul>
             {participantes.map((p) => (
-              <li key={p.id}>
+              <li key={p.id} style={{ marginBottom: "8px" }}>
                 {p.nombre}
+                <button
+                  onClick={() => generarInvitacion(p)}
+                  style={{ 
+                    marginLeft: "10px",
+                    backgroundColor: copiado === p.id ? "#4CAF50" : "#2196F3",
+                    color: "white",
+                    border: "none",
+                    padding: "4px 8px",
+                    borderRadius: "4px",
+                    cursor: "pointer"
+                  }}
+                >
+                  {copiado === p.id ? "✅ Copiado" : "📋 Copiar invitación"}
+                </button>
                 <button
                   onClick={() => eliminarParticipante(p.id)}
                   style={{ marginLeft: "10px" }}
