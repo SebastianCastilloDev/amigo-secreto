@@ -57,6 +57,155 @@ body::before {
   }
 }
 
+/* Copos de nieve CSS puro */
+.snowfall {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.snowfall::before,
+.snowfall::after {
+  content: "❄ ❄ ❄ ❄ ❄ ❄ ❄ ❄ ❄ ❄";
+  position: absolute;
+  top: -20px;
+  left: 0;
+  width: 100%;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 1.2rem;
+  letter-spacing: 4rem;
+  animation: fall 10s linear infinite;
+  text-shadow: 
+    20vw 0 currentColor, 
+    40vw 0 currentColor, 
+    60vw 0 currentColor, 
+    80vw 0 currentColor;
+}
+
+.snowfall::after {
+  left: 2rem;
+  animation-delay: 5s;
+  animation-duration: 15s;
+  font-size: 0.8rem;
+  opacity: 0.7;
+}
+
+.snowflake-layer {
+  position: absolute;
+  top: -20px;
+  width: 100%;
+  height: 100%;
+}
+
+.snowflake-layer:nth-child(1) {
+  animation: fall 8s linear infinite;
+}
+
+.snowflake-layer:nth-child(1)::before {
+  content: "❄";
+  position: absolute;
+  left: 10%;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 1rem;
+}
+
+.snowflake-layer:nth-child(1)::after {
+  content: "❄";
+  position: absolute;
+  left: 30%;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 1.3rem;
+}
+
+.snowflake-layer:nth-child(2) {
+  animation: fall 12s linear infinite;
+  animation-delay: 2s;
+}
+
+.snowflake-layer:nth-child(2)::before {
+  content: "❄";
+  position: absolute;
+  left: 50%;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.9rem;
+}
+
+.snowflake-layer:nth-child(2)::after {
+  content: "❄";
+  position: absolute;
+  left: 70%;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 1.1rem;
+}
+
+.snowflake-layer:nth-child(3) {
+  animation: fall 10s linear infinite;
+  animation-delay: 4s;
+}
+
+.snowflake-layer:nth-child(3)::before {
+  content: "❄";
+  position: absolute;
+  left: 20%;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 1.4rem;
+}
+
+.snowflake-layer:nth-child(3)::after {
+  content: "❄";
+  position: absolute;
+  left: 90%;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.8rem;
+}
+
+.snowflake-layer:nth-child(4) {
+  animation: fall 14s linear infinite;
+  animation-delay: 1s;
+}
+
+.snowflake-layer:nth-child(4)::before {
+  content: "❄";
+  position: absolute;
+  left: 40%;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 1.2rem;
+}
+
+.snowflake-layer:nth-child(4)::after {
+  content: "❄";
+  position: absolute;
+  left: 60%;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 1rem;
+}
+
+.snowflake-layer:nth-child(5) {
+  animation: fall 9s linear infinite;
+  animation-delay: 3s;
+}
+
+.snowflake-layer:nth-child(5)::before {
+  content: "❄";
+  position: absolute;
+  left: 80%;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 1.1rem;
+}
+
+.snowflake-layer:nth-child(5)::after {
+  content: "❄";
+  position: absolute;
+  left: 5%;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.9rem;
+}
+
 /* Spinner de carga navideño */
 .spinner {
   width: 50px;
