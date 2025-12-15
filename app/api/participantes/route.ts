@@ -1,13 +1,35 @@
 import { prisma } from "../../lib/prisma";
 import { NextResponse } from "next/server";
 
-// Obtener todos los participantes
+// Obtener todos los participantes con su asignación (para admin)
 export async function GET() {
     try {
+        // Obtener participantes
         const participantes = await prisma.participante.findMany({
             orderBy: { id: "asc" },
         });
-        return NextResponse.json(participantes);
+
+        // Obtener asignaciones
+        const asignaciones = await prisma.asignacion.findMany({
+            include: {
+                quienRecibe: true,
+            },
+        });
+
+        // Crear mapa de asignaciones: quienRegalaId -> nombreQuienRecibe
+        const mapaAsignaciones = new Map<number, string>();
+        for (const a of asignaciones) {
+            mapaAsignaciones.set(a.quienRegalaId, a.quienRecibe.nombre);
+        }
+
+        // Transformar para incluir el nombre del amigo secreto asignado
+        const resultado = participantes.map((p) => ({
+            id: p.id,
+            nombre: p.nombre,
+            amigoSecreto: mapaAsignaciones.get(p.id) || null,
+        }));
+
+        return NextResponse.json(resultado);
     } catch (error) {
         console.error("Error al obtener participantes:", error);
         return NextResponse.json(

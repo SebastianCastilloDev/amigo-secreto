@@ -30,11 +30,18 @@ export async function GET(request: Request) {
             );
         }
 
+        // Obtener todos los nombres de participantes para la animación
+        const todosParticipantes = await prisma.participante.findMany({
+            select: { nombre: true }
+        });
+        const nombresParticipantes = todosParticipantes.map(p => p.nombre);
+
         return NextResponse.json({
             id: participante.id,
             nombre: participante.nombre,
             yaParticipo: !!participante.regalaA,
             amigoSecreto: participante.regalaA?.quienRecibe.nombre || null,
+            participantes: nombresParticipantes,
         });
     } catch (error) {
         console.error("Error al verificar token:", error);

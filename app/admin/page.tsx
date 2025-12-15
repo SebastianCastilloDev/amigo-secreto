@@ -1,372 +1,191 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useCallback } from "react";
 import Link from "next/link";
 
-interface Participante {
-  id: number;
-  nombre: string;
-  token?: string;
-}
+import {
+  FormularioLogin,
+  PantallaHackeo,
+  FormularioParticipante,
+  ListaParticipantes,
+  EstadoTombola,
+  SeccionIncidentes,
+  PantallaCargando,
+} from "./componentes";
+
+import {
+  useAutenticacion,
+  useHackeo,
+  useParticipantes,
+  useSorteo,
+  useIncidentes,
+} from "./hooks";
 
 export default function Admin() {
-  const [autenticado, setAutenticado] = useState(false);
-  const [verificandoAuth, setVerificandoAuth] = useState(true);
-  const [password, setPassword] = useState("");
-  const [errorAuth, setErrorAuth] = useState("");
-  const [verificando, setVerificando] = useState(false);
-
   const [cargando, setCargando] = useState(true);
-  const [participantes, setParticipantes] = useState<Participante[]>([]);
-  const [nuevoNombre, setNuevoNombre] = useState("");
-  const [guardando, setGuardando] = useState(false);
-  const [mensajeSorteo, setMensajeSorteo] = useState("");
-  const [sorteoRealizado, setSorteoRealizado] = useState(false);
-  const [errorAgregar, setErrorAgregar] = useState("");
-  const [copiado, setCopiado] = useState<number | null>(null);
 
-  useEffect(() => {
-    // Verificar si ya hay sesión guardada
-    const sesion = sessionStorage.getItem("admin_auth");
-    if (sesion === "true") {
-      setAutenticado(true);
-      cargarDatos();
-    }
-    setVerificandoAuth(false);
+  // Hook de participantes
+  const {
+    participantes,
+    nuevoNombre,
+    setNuevoNombre,
+    guardando,
+    errorAgregar,
+    copiado,
+    cargarParticipantes,
+    agregarParticipante,
+    eliminarParticipante,
+    generarInvitacion,
+  } = useParticipantes();
+
+  // Hook de sorteo
+  const {
+    mensajeSorteo,
+    sorteoRealizado,
+    realizandoSorteo,
+    verificarEstadoSorteo,
+    realizarSorteo,
+    reiniciarSorteo,
+  } = useSorteo();
+
+  // Hook de incidentes
+  const {
+    incidentes,
+    verIncidentes,
+    setVerIncidentes,
+    cargarIncidentes,
+  } = useIncidentes();
+
+  // Función para cargar todos los datos
+  const cargarDatos = useCallback(async () => {
+    await Promise.all([
+      cargarParticipantes(),
+      verificarEstadoSorteo(),
+      cargarIncidentes(),
+    ]);
+    setCargando(false);
   }, []);
 
-  async function verificarPassword(e: React.FormEvent) {
-    e.preventDefault();
-    if (!password.trim() || verificando) return;
+  // Hook de autenticación
+  const {
+    autenticado,
+    verificandoAuth,
+    password,
+    setPassword,
+    errorAuth,
+    verificando,
+    intentosFallidos,
+    passwordsIntentadas,
+    verificarPassword,
+    cerrarSesion,
+  } = useAutenticacion(cargarDatos, () => hackeo.iniciarHackeo());
 
-    setVerificando(true);
-    setErrorAuth("");
+  // Hook de hackeo
+  const hackeo = useHackeo(passwordsIntentadas, intentosFallidos);
 
-    try {
-      const respuesta = await fetch("/api/admin/verificar", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password }),
-      });
-
-      if (respuesta.ok) {
-        sessionStorage.setItem("admin_auth", "true");
-        setAutenticado(true);
-        cargarDatos();
-      } else {
-        setErrorAuth("Contraseña incorrecta");
-      }
-    } catch (error) {
-      setErrorAuth("Error de conexión");
-    } finally {
-      setVerificando(false);
-    }
-  }
-
-  function cerrarSesion() {
-    sessionStorage.removeItem("admin_auth");
-    setAutenticado(false);
-    setPassword("");
-  }
-
-  async function cargarDatos() {
-    await Promise.all([cargarParticipantes(), verificarEstadoSorteo()]);
-    setCargando(false);
-  }
-
-  async function verificarEstadoSorteo() {
-    try {
-      const respuesta = await fetch("/api/sorteo/estado");
-      const datos = await respuesta.json();
-      setSorteoRealizado(datos.sorteoRealizado);
-    } catch (error) {
-      console.error("Error al verificar estado:", error);
-    }
-  }
-
-  async function cargarParticipantes() {
-    try {
-      const respuesta = await fetch("/api/participantes");
-      const datos = await respuesta.json();
-      setParticipantes(datos);
-    } catch (error) {
-      console.error("Error al cargar participantes:", error);
-    } finally {
-      setCargando(false);
-    }
-  }
-
-  async function agregarParticipante(e: React.FormEvent) {
-    e.preventDefault();
-    if (!nuevoNombre.trim() || guardando) return;
-
-    setGuardando(true);
-    setErrorAgregar("");
-    
-    try {
-      const respuesta = await fetch("/api/participantes", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nombre: nuevoNombre }),
-      });
-
-      const datos = await respuesta.json();
-
-      if (respuesta.ok) {
-        setNuevoNombre("");
-        cargarParticipantes();
-      } else {
-        setErrorAgregar(datos.error || "Error al agregar");
-      }
-    } catch (error) {
-      console.error("Error al agregar:", error);
-      setErrorAgregar("Error de conexión");
-    } finally {
-      setGuardando(false);
-    }
-  }
-
-  async function eliminarParticipante(id: number) {
-    try {
-      const respuesta = await fetch("/api/participantes", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id }),
-      });
-
-      if (respuesta.ok) {
-        cargarParticipantes();
-      }
-    } catch (error) {
-      console.error("Error al eliminar:", error);
-    }
-  }
-
-  async function reiniciarSorteo() {
-    if (!confirm("¿Estás seguro de reiniciar la tómbola? Se eliminarán todas las asignaciones y todos podrán sacar papelito de nuevo.")) {
-      return;
-    }
-
-    try {
-      const respuesta = await fetch("/api/sorteo", {
-        method: "DELETE",
-      });
-
-      if (respuesta.ok) {
-        setMensajeSorteo("🔄 Tómbola reiniciada. Todos pueden volver a participar.");
-        setSorteoRealizado(false);
-      }
-    } catch (error) {
-      setMensajeSorteo("❌ Error al reiniciar la tómbola");
-    }
-  }
-
-  async function generarInvitacion(participante: Participante) {
-    // Si ya tiene token, solo copiar
-    if (participante.token) {
-      copiarAlPortapapeles(participante);
-      return;
-    }
-
-    // Generar token
-    try {
-      const respuesta = await fetch("/api/participantes/invitacion", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ participanteId: participante.id }),
-      });
-
-      if (respuesta.ok) {
-        const datos = await respuesta.json();
-        // Actualizar el participante con el nuevo token
-        setParticipantes(prev => 
-          prev.map(p => 
-            p.id === participante.id 
-              ? { ...p, token: datos.token } 
-              : p
-          )
-        );
-        copiarAlPortapapeles({ ...participante, token: datos.token });
-      }
-    } catch (error) {
-      console.error("Error al generar invitación:", error);
-    }
-  }
-
-  function copiarAlPortapapeles(participante: Participante) {
-    const url = `${window.location.origin}/participar/${participante.token}`;
-    navigator.clipboard.writeText(url);
-    setCopiado(participante.id);
-    setTimeout(() => setCopiado(null), 2000);
+  // 🚨 PANTALLA DE HACKEO TERRORÍFICA 🚨
+  if (hackeo.modoHackeo) {
+    return (
+      <PantallaHackeo
+        faseHackeo={hackeo.faseHackeo}
+        ipCapturada={hackeo.ipCapturada}
+        fotoCapturada={hackeo.fotoCapturada}
+        coordenadas={hackeo.coordenadas}
+        datosDispositivo={hackeo.datosDispositivo}
+        passwordsIntentadas={passwordsIntentadas}
+        intentosFallidos={intentosFallidos}
+        videoRef={hackeo.videoRef}
+        canvasRef={hackeo.canvasRef}
+      />
+    );
   }
 
   // Verificando si hay sesión guardada
   if (verificandoAuth) {
-    return (
-      <main>
-        <h1>⚙️ Administrar Amigo Secreto</h1>
-        <div className="spinner"></div>
-      </main>
-    );
+    return <PantallaCargando />;
   }
 
   // Pantalla de login
   if (!autenticado) {
     return (
-      <main>
-        <h1>⚙️ Administrar Amigo Secreto</h1>
-        <div style={{ marginTop: "30px", textAlign: "center" }}>
-          <p style={{ fontSize: "48px" }}>🔐</p>
-          <p style={{ marginBottom: "20px" }}>Ingresa la contraseña de administrador</p>
-          <form onSubmit={verificarPassword}>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Contraseña"
-              disabled={verificando}
-              style={{ 
-                padding: "10px", 
-                fontSize: "16px",
-                marginRight: "10px" 
-              }}
-            />
-            <button 
-              type="submit" 
-              disabled={verificando || !password.trim()}
-              style={{ padding: "10px 20px", fontSize: "16px" }}
-            >
-              {verificando ? "Verificando..." : "Entrar"}
-            </button>
-          </form>
-          {errorAuth && (
-            <p style={{ color: "red", marginTop: "10px" }}>{errorAuth}</p>
-          )}
-        </div>
-      </main>
+      <FormularioLogin
+        password={password}
+        setPassword={setPassword}
+        verificando={verificando}
+        errorAuth={errorAuth}
+        onSubmit={verificarPassword}
+      />
     );
   }
 
+  // Cargando datos
   if (cargando) {
-    return (
-      <main>
-        <h1>⚙️ Administrar Amigo Secreto</h1>
-        <div className="spinner"></div>
-        <p>Cargando...</p>
-      </main>
-    );
+    return <PantallaCargando mensaje="Cargando..." />;
   }
 
   return (
-    <main>
-      <h1>⚙️ Administrar Amigo Secreto</h1>
-      
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <Link href="/">← Volver al inicio</Link>
-        <button 
-          onClick={cerrarSesion}
-          style={{ 
-            padding: "5px 10px", 
-            backgroundColor: "#f5f5f5",
-            border: "1px solid #ccc",
-            cursor: "pointer"
-          }}
-        >
-          🚪 Cerrar sesión
-        </button>
-      </div>
-
-      {/* Formulario para agregar participante */}
-      <section style={{ marginTop: "20px" }}>
-        <h2>Agregar Participante</h2>
-        <form onSubmit={agregarParticipante}>
-          <input
-            type="text"
-            value={nuevoNombre}
-            onChange={(e) => setNuevoNombre(e.target.value)}
-            placeholder="Nombre del participante"
-            disabled={guardando}
-          />
-          <button type="submit" disabled={guardando || !nuevoNombre.trim()}>
-            {guardando ? "Agregando..." : "Agregar"}
+    <main className="min-h-dvh bg-slate-900 text-white p-4 sm:p-6 pb-10">
+      {/* Header */}
+      <div className="max-w-2xl mx-auto">
+        <div className="flex items-center justify-between mb-6">
+          <Link 
+            href="/" 
+            className="text-white/60 hover:text-white transition-colors text-sm flex items-center gap-1"
+          >
+            ← Volver
+          </Link>
+          <button 
+            onClick={cerrarSesion}
+            className="px-3 py-1.5 text-sm bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
+          >
+            Cerrar sesión
           </button>
-        </form>
-        {errorAgregar && <p style={{ color: "red", marginTop: "5px" }}>{errorAgregar}</p>}
-      </section>
+        </div>
 
-      {/* Lista de participantes */}
-      <section style={{ marginTop: "20px" }}>
-        <h2>Participantes ({participantes.length})</h2>
-        {participantes.length === 0 ? (
-          <p>No hay participantes aún. ¡Agrega el primero!</p>
-        ) : (
-          <ul>
-            {participantes.map((p) => (
-              <li key={p.id} style={{ marginBottom: "8px" }}>
-                {p.nombre}
-                <button
-                  onClick={() => generarInvitacion(p)}
-                  style={{ 
-                    marginLeft: "10px",
-                    backgroundColor: copiado === p.id ? "#4CAF50" : "#2196F3",
-                    color: "white",
-                    border: "none",
-                    padding: "4px 8px",
-                    borderRadius: "4px",
-                    cursor: "pointer"
-                  }}
-                >
-                  {copiado === p.id ? "✅ Copiado" : "📋 Copiar invitación"}
-                </button>
-                <button
-                  onClick={() => eliminarParticipante(p.id)}
-                  style={{ marginLeft: "10px" }}
-                >
-                  ❌
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+        <h1 className="text-2xl sm:text-3xl font-bold mb-8">⚙️ Panel de Admin</h1>
 
-      {/* Estado de la tómbola */}
-      <section style={{ marginTop: "30px" }}>
-        <h2>🎰 Estado de la Tómbola</h2>
-        
-        {sorteoRealizado ? (
-          <div>
-            <p style={{ 
-              backgroundColor: "#e8f5e9", 
-              padding: "10px", 
-              borderRadius: "5px",
-              marginBottom: "15px" 
-            }}>
-              ✅ Algunos participantes ya sacaron su papelito de la tómbola.
-            </p>
-            
-            <button
-              onClick={reiniciarSorteo}
-              style={{ 
-                padding: "10px 20px", 
-                fontSize: "16px",
-                backgroundColor: "#ffebee",
-                border: "1px solid #f44336",
-                cursor: "pointer"
-              }}
-            >
-              🗑️ Reiniciar tómbola (borrar todas las asignaciones)
-            </button>
-            
-            {mensajeSorteo && <p style={{ marginTop: "10px" }}>{mensajeSorteo}</p>}
-          </div>
-        ) : (
-          <p style={{ color: "#666" }}>
-            Nadie ha sacado papelito aún. Cuando los participantes entren a la página principal, 
-            cada uno sacará su amigo secreto de la tómbola.
-          </p>
-        )}
-      </section>
+        {/* Formulario para agregar participante */}
+        <FormularioParticipante
+          nuevoNombre={nuevoNombre}
+          setNuevoNombre={setNuevoNombre}
+          guardando={guardando}
+          errorAgregar={errorAgregar}
+          onSubmit={agregarParticipante}
+        />
+
+        {/* Lista de participantes */}
+        <ListaParticipantes
+          participantes={participantes}
+          copiado={copiado}
+          onGenerarInvitacion={generarInvitacion}
+          onEliminar={eliminarParticipante}
+        />
+
+        {/* Estado de la tómbola */}
+        <EstadoTombola
+          sorteoRealizado={sorteoRealizado}
+          mensajeSorteo={mensajeSorteo}
+          realizandoSorteo={realizandoSorteo}
+          totalParticipantes={participantes.length}
+          onRealizarSorteo={async () => {
+            const exito = await realizarSorteo();
+            if (exito) {
+              cargarParticipantes(); // Recargar para ver asignaciones
+            }
+          }}
+          onReiniciar={async () => {
+            await reiniciarSorteo();
+            cargarParticipantes(); // Recargar para limpiar asignaciones
+          }}
+        />
+
+        {/* Sección de Incidentes de Seguridad */}
+        <SeccionIncidentes
+          incidentes={incidentes}
+          verIncidentes={verIncidentes}
+          setVerIncidentes={setVerIncidentes}
+        />
+      </div>
     </main>
   );
 }
