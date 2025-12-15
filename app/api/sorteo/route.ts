@@ -1,91 +1,122 @@
 import { prisma } from "../../lib/prisma";
 import { NextResponse } from "next/server";
 
-// Realizar sorteo individual (tómbola) - REQUIERE TOKEN
+// Función para mezclar array (Fisher-Yates shuffle)
+function mezclarArray<T>(array: T[]): T[] {
+    const resultado = [...array];
+    for (let i = resultado.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [resultado[i], resultado[j]] = [resultado[j], resultado[i]];
+    }
+    return resultado;
+}
+
+// POST: Realizar sorteo completo (solo admin) o revelar asignación (participante con token)
 export async function POST(request: Request) {
     try {
-        const { token } = await request.json();
-
-        if (!token) {
-            return NextResponse.json(
-                { error: "Token requerido" },
-                { status: 400 }
-            );
+        const body = await request.json();
+        
+        // Si viene con token, es un participante queriendo ver su asignación
+        if (body.token) {
+            return revelarAsignacion(body.token);
         }
-
-        // Buscar participante por token (no por ID)
-        const participante = await prisma.participante.findUnique({
-            where: { token },
-        });
-
-        if (!participante) {
-            return NextResponse.json(
-                { error: "Invitación no válida" },
-                { status: 403 }
-            );
+        
+        // Si viene con realizarSorteo, es el admin queriendo hacer el sorteo
+        if (body.realizarSorteo) {
+            return realizarSorteoCompleto();
         }
-
-        const participanteId = participante.id;
-
-        // Verificar si ya tiene asignación
-        const asignacionExistente = await prisma.asignacion.findUnique({
-            where: { quienRegalaId: participanteId },
-            include: { quienRecibe: true },
-        });
-
-        if (asignacionExistente) {
-            // Ya tiene asignación, devolver la existente
-            return NextResponse.json({
-                yaAsignado: true,
-                recibeNombre: asignacionExistente.quienRecibe.nombre,
-            });
-        }
-
-        // Obtener IDs de participantes que YA fueron asignados a alguien
-        const asignacionesExistentes = await prisma.asignacion.findMany({
-            select: { quienRecibeId: true },
-        });
-        const idsYaAsignados = asignacionesExistentes.map((a) => a.quienRecibeId);
-
-        // Obtener participantes disponibles (no asignados y no es él mismo)
-        const disponibles = await prisma.participante.findMany({
-            where: {
-                id: {
-                    notIn: [...idsYaAsignados, participanteId],
-                },
-            },
-        });
-
-        if (disponibles.length === 0) {
-            return NextResponse.json(
-                { error: "No hay participantes disponibles para asignar" },
-                { status: 400 }
-            );
-        }
-
-        // Elegir uno al azar
-        const indiceAleatorio = Math.floor(Math.random() * disponibles.length);
-        const elegido = disponibles[indiceAleatorio];
-
-        // Crear la asignación
-        await prisma.asignacion.create({
-            data: {
-                quienRegalaId: participanteId,
-                quienRecibeId: elegido.id,
-            },
-        });
-
-        return NextResponse.json({
-            yaAsignado: false,
-            recibeNombre: elegido.nombre,
-        });
-    } catch (error) {
-        console.error("Error al realizar sorteo:", error);
+        
         return NextResponse.json(
-            { error: "Error al realizar el sorteo" },
+            { error: "Solicitud no válida" },
+            { status: 400 }
+        );
+    } catch (error) {
+        console.error("Error en sorteo:", error);
+        return NextResponse.json(
+            { error: "Error en el sorteo" },
             { status: 500 }
         );
     }
+}
+
+// Revelar la asignación de un participante (simula "sacar de la tómbola")
+async function revelarAsignacion(token: string) {
+    // Buscar participante por token
+    const participante = await prisma.participante.findUnique({
+        where: { token },
+    });
+
+    if (!participante) {
+        return NextResponse.json(
+            { error: "Invitación no válida" },
+            { status: 403 }
+        );
+    }
+
+    // Buscar su asignación
+    const asignacion = await prisma.asignacion.findUnique({
+        where: { quienRegalaId: participante.id },
+        include: { quienRecibe: true },
+    });
+
+    if (!asignacion) {
+        return NextResponse.json(
+            { error: "El sorteo aún no se ha realizado. Espera a que el organizador lo haga." },
+            { status: 404 }
+        );
+    }
+
+    // Marcar como "visto" (para estadísticas del admin)
+    // Por ahora solo devolvemos el resultado
+    return NextResponse.json({
+        yaAsignado: true, // Siempre true porque ya existe
+        recibeNombre: asignacion.quienRecibe.nombre,
+    });
+}
+
+// Realizar el sorteo completo (algoritmo de ciclo)
+async function realizarSorteoCompleto() {
+    // Verificar que no haya sorteo previo
+    const asignacionesExistentes = await prisma.asignacion.count();
+    if (asignacionesExistentes > 0) {
+        return NextResponse.json(
+            { error: "Ya existe un sorteo. Reinícialo primero si quieres hacer uno nuevo." },
+            { status: 400 }
+        );
+    }
+
+    // Obtener todos los participantes
+    const participantes = await prisma.participante.findMany();
+    
+    if (participantes.length < 2) {
+        return NextResponse.json(
+            { error: "Se necesitan al menos 2 participantes para el sorteo" },
+            { status: 400 }
+        );
+    }
+
+    // Mezclar participantes aleatoriamente
+    const mezclados = mezclarArray(participantes);
+    
+    // Crear asignaciones en ciclo: cada uno regala al siguiente
+    // El último regala al primero (cierra el ciclo)
+    const asignaciones = mezclados.map((participante, index) => {
+        const siguienteIndex = (index + 1) % mezclados.length;
+        return {
+            quienRegalaId: participante.id,
+            quienRecibeId: mezclados[siguienteIndex].id,
+        };
+    });
+
+    // Guardar todas las asignaciones
+    await prisma.asignacion.createMany({
+        data: asignaciones,
+    });
+
+    return NextResponse.json({
+        mensaje: "Sorteo realizado exitosamente",
+        totalAsignaciones: asignaciones.length,
+    });
 }
 
 // Obtener la asignación de un participante

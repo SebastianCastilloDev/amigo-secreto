@@ -42,7 +42,9 @@ export default function Admin() {
   const {
     mensajeSorteo,
     sorteoRealizado,
+    realizandoSorteo,
     verificarEstadoSorteo,
+    realizarSorteo,
     reiniciarSorteo,
   } = useSorteo();
 
@@ -163,7 +165,18 @@ export default function Admin() {
         <EstadoTombola
           sorteoRealizado={sorteoRealizado}
           mensajeSorteo={mensajeSorteo}
-          onReiniciar={reiniciarSorteo}
+          realizandoSorteo={realizandoSorteo}
+          totalParticipantes={participantes.length}
+          onRealizarSorteo={async () => {
+            const exito = await realizarSorteo();
+            if (exito) {
+              cargarParticipantes(); // Recargar para ver asignaciones
+            }
+          }}
+          onReiniciar={async () => {
+            await reiniciarSorteo();
+            cargarParticipantes(); // Recargar para limpiar asignaciones
+          }}
         />
 
         {/* Sección de Incidentes de Seguridad */}

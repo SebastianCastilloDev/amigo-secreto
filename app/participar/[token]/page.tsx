@@ -23,6 +23,7 @@ export default function Participar() {
 
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
+  const [sorteoNoRealizado, setSorteoNoRealizado] = useState(false);
   const [nombre, setNombre] = useState("");
   const [participanteId, setParticipanteId] = useState<number | null>(null);
   const [amigoSecreto, setAmigoSecreto] = useState<string | null>(null);
@@ -69,6 +70,9 @@ export default function Participar() {
       if (respuesta.ok) {
         setAmigoSecreto(datos.recibeNombre);
         setYaParticipo(true);
+      } else if (respuesta.status === 404) {
+        // Sorteo no realizado aún
+        setSorteoNoRealizado(true);
       } else {
         setError(datos.error || "Error al sacar de la tómbola");
       }
@@ -112,6 +116,40 @@ export default function Participar() {
             <p className="text-white/50 text-sm">
               Pide al organizador que te envíe un nuevo enlace.
             </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Sorteo no realizado aún
+  if (sorteoNoRealizado) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 relative">
+        <Snowfall />
+        <div className="relative z-10 w-full max-w-md">
+          <div className="bg-amber-900/50 backdrop-blur-md rounded-3xl p-8 shadow-2xl border border-amber-500/30 text-center">
+            <div className="inline-flex items-center justify-center w-20 h-20 bg-amber-500/20 rounded-full mb-6">
+              <Gift className="w-10 h-10 text-amber-400" />
+            </div>
+            <h2 className="text-xl font-bold text-white mb-2">
+              ¡Hola {nombre}!
+            </h2>
+            <h1 className="text-2xl font-bold text-amber-200 mb-4">
+              El sorteo aún no se ha realizado
+            </h1>
+            <p className="text-amber-200/80 mb-4">
+              El organizador todavía no ha hecho el sorteo. Vuelve a intentarlo más tarde.
+            </p>
+            <button
+              onClick={() => {
+                setSorteoNoRealizado(false);
+                sacarDeTombola();
+              }}
+              className="mt-4 px-6 py-3 bg-amber-500 hover:bg-amber-600 text-white font-medium rounded-xl transition-colors"
+            >
+              🔄 Volver a intentar
+            </button>
           </div>
         </div>
       </div>
