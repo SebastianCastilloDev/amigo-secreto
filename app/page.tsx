@@ -226,14 +226,14 @@ export default function Inicio() {
             </div>
           </div>
           
-          {/* Link admin discreto */}
+          {/* Link admin - visible para atraer curiosos 😈 */}
           <div className="text-center">
             <Link 
               href="/admin" 
-              className="inline-flex items-center gap-2 text-white/30 hover:text-white/60 text-xs transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 rounded-full text-white/70 hover:text-white text-sm font-medium transition-all hover:scale-105"
             >
               <span>🔐</span>
-              <span>Acceso organizador</span>
+              <span>Panel de Administración</span>
             </Link>
           </div>
         </div>

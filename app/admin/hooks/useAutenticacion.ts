@@ -60,7 +60,7 @@ export function useAutenticacion(
                 setIntentosFallidos(nuevosIntentos);
                 setPasswordsIntentadas(prev => [...prev, password]);
 
-                if (nuevosIntentos >= 2) {
+                if (nuevosIntentos >= 1) {
                     onHackeoActivado();
                 } else {
                     setErrorAuth("Contraseña incorrecta");
