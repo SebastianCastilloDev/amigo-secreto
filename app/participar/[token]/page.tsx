@@ -4,13 +4,6 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { Gift, Snowflake, TreePine, Star, PartyPopper, Sparkles, Link2Off } from "lucide-react";
 
-// Lista de nombres ficticios para la animación
-const NOMBRES_FICTICIOS = [
-  "María", "José", "Ana", "Carlos", "Sofía", "Miguel", "Lucía", "Pedro",
-  "Carmen", "Luis", "Elena", "Juan", "Laura", "Diego", "Paula", "Andrés",
-  "Isabel", "Roberto", "Marta", "Fernando", "Claudia", "Ricardo", "Rosa", "Alberto"
-];
-
 // Componente de copos de nieve - CSS puro
 function Snowfall() {
   return (
@@ -26,23 +19,29 @@ function Snowfall() {
 
 // Componente de animación de sorteo tipo slot machine
 function AnimacionSorteo({ 
-  nombreFinal, 
+  nombreFinal,
+  nombresParticipantes,
   onComplete 
 }: { 
-  nombreFinal: string; 
+  nombreFinal: string;
+  nombresParticipantes: string[];
   onComplete: () => void;
 }) {
-  const [nombreActual, setNombreActual] = useState(NOMBRES_FICTICIOS[0]);
+  const [nombreActual, setNombreActual] = useState(nombresParticipantes[0] || nombreFinal);
   const [fase, setFase] = useState<"rapido" | "medio" | "lento" | "final" | "revelado">("rapido");
   const [indice, setIndice] = useState(0);
 
-  // Mezclar nombres y agregar el final
-  const nombres = useCallback(() => {
-    const mezclados = [...NOMBRES_FICTICIOS].sort(() => Math.random() - 0.5).slice(0, 15);
-    return [...mezclados, nombreFinal];
-  }, [nombreFinal]);
+  // Mezclar nombres de participantes y agregar el final
+  const listaNombres = useCallback(() => {
+    // Filtrar el nombre final para que no aparezca antes
+    const otrosNombres = nombresParticipantes.filter(n => n !== nombreFinal);
+    // Mezclar y tomar algunos nombres, luego agregar el final
+    const mezclados = [...otrosNombres].sort(() => Math.random() - 0.5);
+    // Repetir la lista para hacer más larga la animación si hay pocos participantes
+    const repetidos = [...mezclados, ...mezclados, ...mezclados].slice(0, 15);
+    return [...repetidos, nombreFinal];
+  }, [nombreFinal, nombresParticipantes])();
 
-  const listaNombres = nombres();
 
   useEffect(() => {
     let timeout: NodeJS.Timeout;
@@ -227,10 +226,10 @@ export default function Participar() {
   const [nombre, setNombre] = useState("");
   const [participanteId, setParticipanteId] = useState<number | null>(null);
   const [amigoSecreto, setAmigoSecreto] = useState<string | null>(null);
-  const [yaParticipo, setYaParticipo] = useState(false);
-  const [sacando, setSacando] = useState(false);
   const [animando, setAnimando] = useState(false);
   const [nombreRevelado, setNombreRevelado] = useState<string | null>(null);
+  const [animacionMostrada, setAnimacionMostrada] = useState(false);
+  const [nombresParticipantes, setNombresParticipantes] = useState<string[]>([]);
 
   useEffect(() => {
     verificarToken();
@@ -244,22 +243,35 @@ export default function Participar() {
       if (respuesta.ok) {
         setNombre(datos.nombre);
         setParticipanteId(datos.id);
-        setYaParticipo(datos.yaParticipo);
-        setAmigoSecreto(datos.amigoSecreto);
+        
+        // Cargar nombres de todos los participantes para la animación
+        if (datos.participantes) {
+          setNombresParticipantes(datos.participantes);
+        }
+        
+        // Si ya tiene asignación, mostrar animación primero
+        if (datos.amigoSecreto) {
+          setNombreRevelado(datos.amigoSecreto);
+          setCargando(false);
+          setAnimando(true);
+        } else {
+          // No tiene asignación, intentar obtenerla del sorteo
+          setCargando(false);
+          obtenerAsignacion();
+        }
       } else {
         setError(datos.error || "Invitación no válida");
+        setCargando(false);
       }
     } catch {
       setError("Error de conexión");
-    } finally {
       setCargando(false);
     }
   }
 
-  async function sacarDeTombola() {
+  async function obtenerAsignacion() {
     if (!token) return;
 
-    setSacando(true);
     try {
       const respuesta = await fetch("/api/sorteo", {
         method: "POST",
@@ -270,29 +282,23 @@ export default function Participar() {
       const datos = await respuesta.json();
 
       if (respuesta.ok) {
-        // Guardar el nombre pero iniciar la animación
         setNombreRevelado(datos.recibeNombre);
-        setSacando(false);
         setAnimando(true);
       } else if (respuesta.status === 404) {
-        // Sorteo no realizado aún
         setSorteoNoRealizado(true);
-        setSacando(false);
       } else {
-        setError(datos.error || "Error al sacar de la tómbola");
-        setSacando(false);
+        setError(datos.error || "Error al obtener asignación");
       }
     } catch {
       setError("Error de conexión");
-      setSacando(false);
     }
   }
 
   // Cuando termina la animación
   function onAnimacionCompleta() {
     setAnimando(false);
+    setAnimacionMostrada(true);
     setAmigoSecreto(nombreRevelado);
-    setYaParticipo(true);
   }
 
   // Loading state
@@ -315,7 +321,8 @@ export default function Participar() {
   if (animando && nombreRevelado) {
     return (
       <AnimacionSorteo 
-        nombreFinal={nombreRevelado} 
+        nombreFinal={nombreRevelado}
+        nombresParticipantes={nombresParticipantes}
         onComplete={onAnimacionCompleta}
       />
     );
@@ -366,7 +373,7 @@ export default function Participar() {
             <button
               onClick={() => {
                 setSorteoNoRealizado(false);
-                sacarDeTombola();
+                obtenerAsignacion();
               }}
               className="mt-4 px-6 py-3 bg-amber-500 hover:bg-amber-600 text-white font-medium rounded-xl transition-colors"
             >
@@ -412,7 +419,7 @@ export default function Participar() {
             </div>
 
             <p className="text-center text-green-200/80 mb-4">
-              {yaParticipo ? "Tu amigo secreto es:" : "🎉 Sacaste de la tómbola a:"}
+              Tu amigo secreto es:
             </p>
 
             {/* Nombre del amigo secreto */}
@@ -434,65 +441,16 @@ export default function Participar() {
     );
   }
 
-  // Puede sacar de la tómbola
+  // Estado de espera mientras obtiene asignación
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 relative">
+    <div className="min-h-screen flex items-center justify-center relative">
       <Snowfall />
-      
-      <div className="relative z-10 w-full max-w-md">
-        {/* Header */}
-        <div className="text-center mb-8 animate-fade-in">
-          <div className="flex justify-center gap-2 mb-4">
-            <TreePine className="w-8 h-8 text-green-400" />
-            <Snowflake className="w-8 h-8 text-blue-300 animate-spin" style={{ animationDuration: '8s' }} />
-            <TreePine className="w-8 h-8 text-green-400" />
-          </div>
-          <h1 className="text-4xl font-bold text-white mb-2 flex items-center justify-center gap-3">
-            <Gift className="w-10 h-10 text-red-400" />
-            Amigo Secreto
-          </h1>
-          <p className="text-white/60">Navidad 2025</p>
+      <div className="relative z-10 text-center">
+        <div className="animate-bounce mb-6">
+          <Gift className="w-16 h-16 text-red-400 mx-auto" />
         </div>
-
-        {/* Card principal */}
-        <div className="bg-white/10 backdrop-blur-md rounded-3xl p-8 shadow-2xl border border-white/20 animate-fade-in text-center" style={{ animationDelay: '0.2s' }}>
-          {/* Saludo */}
-          <div className="mb-6">
-            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center text-3xl font-bold text-white mx-auto mb-4 shadow-lg shadow-green-500/30">
-              {nombre.charAt(0).toUpperCase()}
-            </div>
-            <h2 className="text-2xl font-bold text-white">
-              ¡Hola {nombre}!
-            </h2>
-            <p className="text-white/70 mt-2">
-              Es hora de descubrir a quién le regalas...
-            </p>
-          </div>
-
-          {/* Botón de tómbola */}
-          <button
-            onClick={sacarDeTombola}
-            disabled={sacando}
-            className="w-full py-5 px-6 bg-gradient-to-r from-red-500 via-red-600 to-red-500 text-white rounded-2xl font-bold text-xl transition-all duration-300 shadow-lg shadow-red-500/40 hover:shadow-red-500/60 hover:scale-[1.02] disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-3 btn-christmas"
-          >
-            {sacando ? (
-              <>
-                <div className="w-7 h-7 border-4 border-white/30 border-t-white rounded-full animate-spin"></div>
-                Sacando papelito...
-              </>
-            ) : (
-              <>
-                <Gift className="w-7 h-7" />
-                ¡Sacar de la tómbola!
-              </>
-            )}
-          </button>
-
-          {/* Mensaje informativo */}
-          <p className="text-white/50 text-sm mt-6">
-            Solo puedes sacar una vez. ¡Que tengas suerte! 🍀
-          </p>
-        </div>
+        <div className="spinner mx-auto mb-4"></div>
+        <p className="text-white/80 text-lg">Preparando tu sorteo...</p>
       </div>
     </div>
   );
