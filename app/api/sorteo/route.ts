@@ -15,17 +15,17 @@ function mezclarArray<T>(array: T[]): T[] {
 export async function POST(request: Request) {
     try {
         const body = await request.json();
-        
+
         // Si viene con token, es un participante queriendo ver su asignación
         if (body.token) {
             return revelarAsignacion(body.token);
         }
-        
+
         // Si viene con realizarSorteo, es el admin queriendo hacer el sorteo
         if (body.realizarSorteo) {
             return realizarSorteoCompleto();
         }
-        
+
         return NextResponse.json(
             { error: "Solicitud no válida" },
             { status: 400 }
@@ -87,7 +87,7 @@ async function realizarSorteoCompleto() {
 
     // Obtener todos los participantes
     const participantes = await prisma.participante.findMany();
-    
+
     if (participantes.length < 2) {
         return NextResponse.json(
             { error: "Se necesitan al menos 2 participantes para el sorteo" },
@@ -97,7 +97,7 @@ async function realizarSorteoCompleto() {
 
     // Mezclar participantes aleatoriamente
     const mezclados = mezclarArray(participantes);
-    
+
     // Crear asignaciones en ciclo: cada uno regala al siguiente
     // El último regala al primero (cierra el ciclo)
     const asignaciones = mezclados.map((participante, index) => {
