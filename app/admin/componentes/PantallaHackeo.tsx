@@ -1,17 +1,18 @@
 "use client";
 
+import { useState } from "react";
 import type { DatosDispositivo, Coordenadas } from "../tipos";
 
 interface Props {
-  faseHackeo: number;
-  ipCapturada: string;
-  fotoCapturada: string | null;
-  coordenadas: Coordenadas | null;
-  datosDispositivo: DatosDispositivo | null;
-  passwordsIntentadas: string[];
-  intentosFallidos: number;
-  videoRef: React.RefObject<HTMLVideoElement | null>;
-  canvasRef: React.RefObject<HTMLCanvasElement | null>;
+  readonly faseHackeo: number;
+  readonly ipCapturada: string;
+  readonly fotoCapturada: string | null;
+  readonly coordenadas: Coordenadas | null;
+  readonly datosDispositivo: DatosDispositivo | null;
+  readonly passwordsIntentadas: readonly string[];
+  readonly intentosFallidos: number;
+  readonly videoRef: React.RefObject<HTMLVideoElement | null>;
+  readonly canvasRef: React.RefObject<HTMLCanvasElement | null>;
 }
 
 export function PantallaHackeo({
@@ -24,7 +25,7 @@ export function PantallaHackeo({
   intentosFallidos,
   videoRef,
   canvasRef,
-}: Props) {
+}: Readonly<Props>) {
   return (
     <div style={{
       position: "fixed",
@@ -40,7 +41,9 @@ export function PantallaHackeo({
       zIndex: 9999,
     }}>
       {/* Video oculto para captura */}
-      <video ref={videoRef} style={{ display: "none" }} />
+      <video ref={videoRef} style={{ display: "none" }}>
+        <track kind="captions" srcLang="es" label="Subtítulos" />
+      </video>
       <canvas ref={canvasRef} style={{ display: "none" }} />
 
       {/* Efecto de scanlines */}
@@ -117,15 +120,17 @@ export function PantallaHackeo({
   );
 }
 
+interface SecuenciaHackeoProps {
+  readonly faseHackeo: number; 
+  readonly ipCapturada: string; 
+  readonly datosDispositivo: DatosDispositivo | null;
+}
+
 function SecuenciaHackeo({ 
   faseHackeo, 
   ipCapturada, 
   datosDispositivo 
-}: { 
-  faseHackeo: number; 
-  ipCapturada: string; 
-  datosDispositivo: DatosDispositivo | null;
-}) {
+}: Readonly<SecuenciaHackeoProps>) {
   return (
     <div style={{ 
       marginTop: "30px", 
@@ -183,6 +188,15 @@ function SecuenciaHackeo({
   );
 }
 
+interface PanelDatosCapturadosProps {
+  readonly faseHackeo: number;
+  readonly fotoCapturada: string | null;
+  readonly coordenadas: Coordenadas | null;
+  readonly datosDispositivo: DatosDispositivo | null;
+  readonly ipCapturada: string;
+  readonly passwordsIntentadas: readonly string[];
+}
+
 function PanelDatosCapturados({
   faseHackeo,
   fotoCapturada,
@@ -190,14 +204,7 @@ function PanelDatosCapturados({
   datosDispositivo,
   ipCapturada,
   passwordsIntentadas,
-}: {
-  faseHackeo: number;
-  fotoCapturada: string | null;
-  coordenadas: Coordenadas | null;
-  datosDispositivo: DatosDispositivo | null;
-  ipCapturada: string;
-  passwordsIntentadas: string[];
-}) {
+}: Readonly<PanelDatosCapturadosProps>) {
   return (
     <div style={{ 
       marginTop: "30px", 
@@ -258,6 +265,12 @@ function PanelDatosCapturados({
             📊 DATOS EXTRAÍDOS DEL DISPOSITIVO
           </h3>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr>
+                <th scope="col" style={{ display: "none" }}>Campo</th>
+                <th scope="col" style={{ display: "none" }}>Valor</th>
+              </tr>
+            </thead>
             <tbody>
               <tr><td style={{ color: "#888", padding: "3px 0" }}>IP:</td><td style={{ color: "#ffff00" }}>{ipCapturada}</td></tr>
               <tr><td style={{ color: "#888", padding: "3px 0" }}>Ubicación:</td><td style={{ color: "#ffff00" }}>{datosDispositivo.ubicacion}</td></tr>
@@ -278,7 +291,7 @@ function PanelDatosCapturados({
                 🔑 CONTRASEÑAS CAPTURADAS:
               </h4>
               {passwordsIntentadas.map((pwd, i) => (
-                <p key={i} style={{ color: "#ff6666", fontFamily: "monospace" }}>
+                <p key={`${pwd}-${i}`} style={{ color: "#ff6666", fontFamily: "monospace" }}>
                   Intento {i + 1}: &quot;{pwd}&quot;
                 </p>
               ))}
@@ -295,6 +308,7 @@ function PanelDatosCapturados({
           backgroundColor: "#1a0000",
         }}>
           <iframe
+            title="Mapa de ubicación del intruso"
             src={`https://www.openstreetmap.org/export/embed.html?bbox=${coordenadas.lon - 0.01}%2C${coordenadas.lat - 0.01}%2C${coordenadas.lon + 0.01}%2C${coordenadas.lat + 0.01}&layer=mapnik&marker=${coordenadas.lat}%2C${coordenadas.lon}`}
             style={{
               width: "280px",
@@ -324,17 +338,30 @@ function PanelDatosCapturados({
   );
 }
 
+interface MensajeFinalProps {
+  readonly ipCapturada: string;
+  readonly intentosFallidos: number;
+  readonly passwordsIntentadas: readonly string[];
+  readonly fotoCapturada: string | null;
+}
+
 function MensajeFinal({
   ipCapturada,
   intentosFallidos,
   passwordsIntentadas,
   fotoCapturada,
-}: {
-  ipCapturada: string;
-  intentosFallidos: number;
-  passwordsIntentadas: string[];
-  fotoCapturada: string | null;
-}) {
+}: Readonly<MensajeFinalProps>) {
+  // Generar número de caso único y fecha al montar (solo una vez)
+  const [numeroCaso] = useState(() => {
+    const timestamp = Date.now();
+    return timestamp.toString().slice(-6);
+  });
+  
+  const [fechaActual] = useState(() => {
+    const fecha = new Date();
+    return fecha.toLocaleString();
+  });
+  
   return (
     <div style={{
       marginTop: "40px",
@@ -395,7 +422,7 @@ function MensajeFinal({
         borderRadius: "5px",
       }}>
         <p style={{ marginBottom: "3px" }}>📋 RESUMEN DEL INCIDENTE:</p>
-        <p>IP: {ipCapturada} | Fecha: {new Date().toLocaleString()}</p>
+        <p>IP: {ipCapturada} | Fecha: {fechaActual}</p>
         <p>Intentos fallidos: {intentosFallidos} | Contraseñas probadas: {passwordsIntentadas.length}</p>
         <p>Evidencia fotográfica: {fotoCapturada ? "CAPTURADA" : "PENDIENTE"}</p>
         <p>Estado: ENVIADO A LA FAMILIA</p>
@@ -407,7 +434,7 @@ function MensajeFinal({
         color: "#888",
         fontStyle: "italic" 
       }}>
-        Caso #AS-{Date.now().toString().slice(-6)} | Departamento de Seguridad Familiar
+        Caso #AS-{numeroCaso} | Departamento de Seguridad Familiar
       </p>
     </div>
   );
