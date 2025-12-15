@@ -22,6 +22,8 @@ export function FormularioLogin({
           <div className="text-6xl mb-4">🔐</div>
           <h1 className="text-2xl font-bold text-white mb-2">Panel de Admin</h1>
           <p className="text-white/50 text-sm">Ingresa la contraseña para continuar</p>
+          {/* Cebo para hackers curiosos */}
+          <p className="text-white/30 text-xs mt-4 font-mono">Contraseña: Admin123</p>
         </div>
         
         <form onSubmit={onSubmit} className="space-y-4">
