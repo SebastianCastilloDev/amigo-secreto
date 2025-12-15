@@ -41,22 +41,13 @@ export function useHackeo(
 
     // Efecto para guardar el incidente cuando se completa (solo una vez)
     useEffect(() => {
-        console.log("[Hackeo] Estado actual:", { 
-            modoHackeo, 
-            faseHackeo, 
-            datosDispositivo: !!datosDispositivo, 
-            incidenteGuardado 
-        });
-        
         if (modoHackeo && faseHackeo >= 5 && datosDispositivo && !incidenteGuardado) {
-            console.log("[Hackeo] Guardando incidente...");
             setIncidenteGuardado(true);
             guardarIncidente();
         }
     }, [modoHackeo, faseHackeo, datosDispositivo, incidenteGuardado]);
 
     async function guardarIncidente() {
-        console.log("[Hackeo] Enviando incidente al servidor...");
         try {
             const response = await fetch("/api/incidentes", {
                 method: "POST",
@@ -78,13 +69,8 @@ export function useHackeo(
                     intentos: intentosFallidos,
                 }),
             });
-            console.log("[Hackeo] Respuesta del servidor:", response.status, response.ok);
-            if (!response.ok) {
-                const error = await response.text();
-                console.error("[Hackeo] Error del servidor:", error);
-            }
-        } catch (error) {
-            console.error("[Hackeo] Error al guardar incidente:", error);
+        } catch {
+            // Silenciar errores en producción
         }
     }
 
